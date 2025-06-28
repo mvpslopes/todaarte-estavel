@@ -93,12 +93,12 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
               />
             </div>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="register-email" className="block text-sm font-medium text-gray-700 mb-2">
                 E-mail
               </label>
               <input
                 type="email"
-                id="email"
+                id="register-email"
                 name="email"
                 required
                 value={formData.email}

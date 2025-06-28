@@ -6,6 +6,7 @@ import { LandingPage } from './pages/LandingPage';
 import { Dashboard } from './pages/Dashboard';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
+import { Footer } from './components/layout/Footer';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -55,8 +56,9 @@ function App() {
     <AuthProvider>
       <DataProvider>
         <Router>
-          <div className="min-h-screen bg-gray-100">
+          <div className="min-h-screen bg-gradient-to-b from-black to-neutral-800">
             <AppContent />
+            <Footer />
           </div>
         </Router>
       </DataProvider>

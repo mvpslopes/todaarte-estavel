@@ -28,7 +28,7 @@ export function Contact() {
   };
 
   return (
-    <section id="contact" className="py-20 bg-gray-900">
+    <section id="contact" className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
@@ -49,20 +49,14 @@ export function Contact() {
                   {
                     icon: Mail,
                     title: 'E-mail',
-                    content: '',
-                    link: ''
+                    content: 'contato@todaarte.com.br',
+                    link: 'mailto:contato@todaarte.com.br'
                   },
                   {
                     icon: Phone,
                     title: 'Telefone',
-                    content: '',
-                    link: ''
-                  },
-                  {
-                    icon: MapPin,
-                    title: 'Endereço',
-                    content: '',
-                    link: null
+                    content: '+55 31 9610-1939',
+                    link: 'tel:+553196101939'
                   }
                 ].map((item, index) => (
                   <div key={index} className="flex items-start space-x-4">
@@ -89,16 +83,43 @@ export function Contact() {
 
             <div className="bg-gradient-to-br from-logo/10 to-logo-light/10 backdrop-blur-sm border border-logo/20 rounded-2xl p-6">
               <h4 className="text-white font-semibold mb-3">Horário de Atendimento</h4>
-              <div className="space-y-2 text-gray-300">
-                <p></p>
-                <p></p>
-                <p></p>
-              </div>
+              <table className="w-full text-gray-300">
+                <tbody>
+                  <tr>
+                    <td className="pr-4">Domingo:</td>
+                    <td className="italic">Fechada</td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Segunda-feira:</td>
+                    <td>14:00 – 19:00</td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Terça-feira:</td>
+                    <td>14:00 – 19:00</td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Quarta-feira:</td>
+                    <td>14:00 – 19:00</td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Quinta-feira:</td>
+                    <td>14:00 – 19:00</td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Sexta-feira:</td>
+                    <td>14:00 – 17:00</td>
+                  </tr>
+                  <tr>
+                    <td className="pr-4">Sábado:</td>
+                    <td className="italic">Fechada</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
           {/* Contact Form */}
-          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8">
+          <div className="bg-gradient-to-br from-logo to-logo-light border border-logo rounded-2xl p-8 shadow-2xl">
             <h3 className="text-2xl font-bold text-white mb-6">Envie sua Mensagem</h3>
             
             {isSubmitted ? (
@@ -121,22 +142,22 @@ export function Contact() {
                       required
                       value={formData.name}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all"
+                      className="w-full px-4 py-3 bg-white/30 border border-logo-light rounded-lg text-black placeholder-gray-700 focus:outline-none focus:border-logo focus:ring-2 focus:ring-logo-light/20 transition-all"
                       placeholder="Seu nome"
                     />
                   </div>
                   <div>
-                    <label htmlFor="email" className="block text-white font-medium mb-2">
+                    <label htmlFor="contact-email" className="block text-white font-medium mb-2">
                       E-mail *
                     </label>
                     <input
                       type="email"
-                      id="email"
+                      id="contact-email"
                       name="email"
                       required
                       value={formData.email}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all"
+                      className="w-full px-4 py-3 bg-white/30 border border-logo-light rounded-lg text-black placeholder-gray-700 focus:outline-none focus:border-logo focus:ring-2 focus:ring-logo-light/20 transition-all"
                       placeholder="seu@email.com"
                     />
                   </div>
@@ -153,7 +174,7 @@ export function Contact() {
                     required
                     value={formData.subject}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all"
+                    className="w-full px-4 py-3 bg-white/30 border border-logo-light rounded-lg text-black placeholder-gray-700 focus:outline-none focus:border-logo focus:ring-2 focus:ring-logo-light/20 transition-all"
                     placeholder="Como podemos ajudar?"
                   />
                 </div>
@@ -169,14 +190,14 @@ export function Contact() {
                     rows={5}
                     value={formData.message}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all resize-none"
+                    className="w-full px-4 py-3 bg-white/30 border border-logo-light rounded-lg text-black placeholder-gray-700 focus:outline-none focus:border-logo focus:ring-2 focus:ring-logo-light/20 transition-all resize-none"
                     placeholder="Conte-nos sobre seu projeto..."
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-logo to-logo-light text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                  className="w-full bg-black text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 border border-black hover:border-yellow-400 hover:text-yellow-300"
                 >
                   <Send className="h-5 w-5" />
                   <span>Enviar Mensagem</span>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { LogIn, Eye, EyeOff, Palette } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import logo from '../../assets/logo.png';
 
 interface LoginFormProps {
   onClose: () => void;
@@ -27,7 +28,7 @@ export function LoginForm({ onClose, onShowRegister }: LoginFormProps) {
       onClose();
       navigate('/dashboard');
     } else {
-      setError('Credenciais inválidas. Tente: admin@todaarte.com / demo123 ou joao@empresa.com / demo123');
+      setError('E-mail ou senha inválidos. Verifique seus dados e tente novamente.');
     }
   };
 
@@ -43,11 +44,8 @@ export function LoginForm({ onClose, onShowRegister }: LoginFormProps) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="p-8">
           <div className="text-center mb-8">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Palette className="h-8 w-8 text-black" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-logo to-logo-light bg-clip-text text-transparent">
-                Toda Arte
-              </span>
+            <div className="flex items-center justify-center mb-4">
+              <img src={logo} alt="Logo Toda Arte" className="h-24 w-24 object-contain" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Área Restrita</h2>
             <p className="text-gray-600 mt-2">Acesse sua conta para continuar</p>
@@ -61,12 +59,12 @@ export function LoginForm({ onClose, onShowRegister }: LoginFormProps) {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-2">
                 E-mail
               </label>
               <input
                 type="email"
-                id="email"
+                id="login-email"
                 name="email"
                 required
                 value={formData.email}
@@ -127,23 +125,7 @@ export function LoginForm({ onClose, onShowRegister }: LoginFormProps) {
             </div>
           </form>
 
-          <div className="mt-8 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">Contas de Demonstração:</h4>
-            <div className="text-sm text-blue-700 space-y-1">
-              <p><strong>Admin:</strong> admin@todaarte.com / demo123</p>
-              <p><strong>Cliente:</strong> joao@empresa.com / demo123</p>
-            </div>
-            <div className="mt-4 text-center">
-              <span className="text-gray-700">Novo por aqui?</span>
-              <button
-                type="button"
-                onClick={onShowRegister}
-                className="ml-2 text-black hover:underline font-semibold"
-              >
-                Cadastre-se
-              </button>
-            </div>
-          </div>
+          {/* Espaço reservado para informações futuras, se necessário */}
         </div>
       </div>
     </div>
