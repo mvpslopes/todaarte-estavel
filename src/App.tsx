@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import { LandingPage } from './pages/LandingPage';
@@ -23,16 +23,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, isLoggingOut } = useAuth();
+  const location = useLocation();
+
+  if (isLoggingOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-black to-neutral-800">
+        <div className="text-white text-lg font-semibold">Desconectando...</div>
+      </div>
+    );
+  }
 
   return (
+    <>
     <Routes>
       <Route 
         path="/" 
         element={<LandingPage />} 
       />
       <Route 
-        path="/dashboard" 
+        path="/dashboard/*" 
         element={
           <ProtectedRoute>
             <Dashboard />
@@ -48,6 +58,8 @@ function AppContent() {
         element={user ? <Navigate to="/dashboard" replace /> : <RegisterForm onClose={() => {}} />}
       />
     </Routes>
+      {location.pathname === '/' && <Footer />}
+    </>
   );
 }
 
@@ -58,7 +70,6 @@ function App() {
         <Router>
           <div className="min-h-screen bg-gradient-to-b from-black to-neutral-800">
             <AppContent />
-            <Footer />
           </div>
         </Router>
       </DataProvider>

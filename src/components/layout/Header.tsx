@@ -54,7 +54,25 @@ export function Header({ onNavClick, isLandingPage = false, onShowLogin }: Heade
               </div>
             )}
             
-            {user ? (
+            {/* Se for landing page, mostrar botão 'Ir para o painel' se logado, senão botão de login */}
+            {isLandingPage ? (
+              user ? (
+                <a
+                  href="/dashboard"
+                  className="ml-8 bg-black text-white px-5 py-2 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  Ir para o painel
+                </a>
+              ) : (
+                <button
+                  onClick={onShowLogin}
+                  className="ml-8 bg-gradient-to-r from-logo to-logo-light text-white px-5 py-2 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  Área do Cliente
+                </button>
+              )
+            ) : (
+              user ? (
               <div className="flex items-center space-x-4 ml-8 pl-8 border-l border-gray-200">
                 <div className="flex items-center space-x-2">
                   {user.avatar && (
@@ -80,6 +98,7 @@ export function Header({ onNavClick, isLandingPage = false, onShowLogin }: Heade
               >
                 Área do Cliente
               </button>
+              )
             )}
           </nav>
 
@@ -105,7 +124,25 @@ export function Header({ onNavClick, isLandingPage = false, onShowLogin }: Heade
               </button>
             ))}
             
-            {user ? (
+            {/* Se for landing page, mostrar botão 'Ir para o painel' se logado, senão botão de login */}
+            {isLandingPage ? (
+              user ? (
+                <a
+                  href="/dashboard"
+                  className="mt-4 w-full bg-black text-white px-5 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl block text-center"
+                >
+                  Ir para o painel
+                </a>
+              ) : (
+                <button
+                  onClick={onShowLogin}
+                  className="mt-4 w-full bg-gradient-to-r from-logo to-logo-light text-white px-5 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  Área do Cliente
+                </button>
+              )
+            ) : (
+              user ? (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center space-x-2 mb-2">
                   {user.avatar && (
@@ -132,6 +169,7 @@ export function Header({ onNavClick, isLandingPage = false, onShowLogin }: Heade
               >
                 Área do Cliente
               </button>
+              )
             )}
           </nav>
         )}

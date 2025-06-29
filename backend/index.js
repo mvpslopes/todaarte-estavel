@@ -1,10 +1,11 @@
 import express from 'express';
-import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { registrarLog } from './audit.js';
+import { pool } from './db.js';
 
 dotenv.config();
 
@@ -13,15 +14,6 @@ const port = process.env.PORT || 3000; // Use 3000 para compatibilidade com a ho
 
 app.use(cors());
 app.use(express.json());
-
-// Conexão MySQL
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306,
-});
 
 // Rotas da API
 app.get('/api', (req, res) => {
@@ -48,6 +40,618 @@ app.post('/api/login', async (req, res) => {
     res.json({ user: userData });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao autenticar', details: error.message });
+  }
+});
+
+// Rotas de categorias financeiras
+app.get('/api/categorias-financeiras', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM categorias_financeiras ORDER BY nome');
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar categorias', details: error.message });
+  }
+});
+
+app.post('/api/categorias-financeiras', async (req, res) => {
+  const { nome, tipo, usuario_id, usuario_nome } = req.body;
+  if (!nome || !tipo) return res.status(400).json({ error: 'Nome e tipo são obrigatórios.' });
+  try {
+    const [result] = await pool.query('INSERT INTO categorias_financeiras (nome, tipo) VALUES (?, ?)', [nome, tipo]);
+    // Log de auditoria
+    console.log('Antes do registrarLog CREATE');
+    try {
+      await registrarLog({
+        usuario_id: usuario_id || 0,
+        usuario_nome: usuario_nome || 'Desconhecido',
+        acao: 'CREATE',
+        entidade: 'categoria',
+        entidade_id: result.insertId,
+        detalhes: { nome, tipo }
+      });
+      console.log('Depois do registrarLog CREATE');
+    } catch (logErr) {
+      console.error('Erro ao registrar log (CREATE):', logErr);
+    }
+    res.status(201).json({ id: result.insertId, nome, tipo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao criar categoria', details: error.message });
+  }
+});
+
+app.put('/api/categorias-financeiras/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nome, tipo, usuario_id, usuario_nome } = req.body;
+  if (!nome || !tipo) return res.status(400).json({ error: 'Nome e tipo são obrigatórios.' });
+  try {
+    // Buscar dados antigos para log
+    const [oldRows] = await pool.query('SELECT * FROM categorias_financeiras WHERE id = ?', [id]);
+    await pool.query('UPDATE categorias_financeiras SET nome = ?, tipo = ? WHERE id = ?', [nome, tipo, id]);
+    // Log de auditoria
+    console.log('Antes do registrarLog UPDATE');
+    try {
+      await registrarLog({
+        usuario_id: usuario_id || 0,
+        usuario_nome: usuario_nome || 'Desconhecido',
+        acao: 'UPDATE',
+        entidade: 'categoria',
+        entidade_id: id,
+        detalhes: { antes: oldRows[0], depois: { nome, tipo } }
+      });
+      console.log('Depois do registrarLog UPDATE');
+    } catch (logErr) {
+      console.error('Erro ao registrar log (UPDATE):', logErr);
+    }
+    res.json({ id, nome, tipo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao editar categoria', details: error.message });
+  }
+});
+
+app.delete('/api/categorias-financeiras/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuario_id, usuario_nome } = req.body;
+  try {
+    // Buscar dados antigos para log
+    const [oldRows] = await pool.query('SELECT * FROM categorias_financeiras WHERE id = ?', [id]);
+    await pool.query('DELETE FROM categorias_financeiras WHERE id = ?', [id]);
+    // Log de auditoria
+    console.log('Antes do registrarLog DELETE');
+    try {
+      await registrarLog({
+        usuario_id: usuario_id || 0,
+        usuario_nome: usuario_nome || 'Desconhecido',
+        acao: 'DELETE',
+        entidade: 'categoria',
+        entidade_id: id,
+        detalhes: { removido: oldRows[0] }
+      });
+      console.log('Depois do registrarLog DELETE');
+    } catch (logErr) {
+      console.error('Erro ao registrar log (DELETE):', logErr);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao excluir categoria', details: error.message });
+  }
+});
+
+// Rotas de lançamentos financeiros
+app.get('/api/transacoes-financeiras', async (req, res) => {
+  try {
+    const { tipo, categoria, cliente, data_inicio, data_fim, status } = req.query;
+    let sql = `
+      SELECT 
+        lf.id,
+        lf.tipo,
+        lf.valor,
+        lf.data_vencimento,
+        lf.data_pagamento,
+        lf.status,
+        lf.descricao,
+        cf.nome as categoria_nome,
+        lf.pessoa,
+        u.name as cliente_nome,
+        lf.criado_em,
+        lf.atualizado_em
+      FROM lancamentos_financeiros lf
+      LEFT JOIN categorias_financeiras cf ON lf.categoria_id = cf.id
+      LEFT JOIN users u ON lf.pessoa = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (tipo) {
+      sql += ' AND lf.tipo = ?';
+      params.push(tipo);
+    }
+    if (categoria) {
+      sql += ' AND cf.nome = ?';
+      params.push(categoria);
+    }
+    if (cliente) {
+      sql += ' AND (u.name LIKE ? OR lf.pessoa = ?)';
+      params.push(`%${cliente}%`, cliente);
+    }
+    if (status) {
+      sql += ' AND lf.status = ?';
+      params.push(status);
+    }
+    if (data_inicio) {
+      sql += ' AND lf.data_vencimento >= ?';
+      params.push(data_inicio);
+    }
+    if (data_fim) {
+      sql += ' AND lf.data_vencimento <= ?';
+      params.push(data_fim);
+    }
+    sql += ' ORDER BY lf.data_vencimento DESC, lf.id DESC';
+    const [rows] = await pool.query(sql, params);
+    // Forçar o campo cliente_nome a ser string ou '-' se nulo
+    const result = rows.map(row => ({ ...row, cliente_nome: row.cliente_nome || '-' }));
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar lançamentos', details: error.message });
+  }
+});
+
+app.post('/api/transacoes-financeiras', async (req, res) => {
+  const { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status } = req.body;
+  if (!tipo || !valor || !data_vencimento || !categoria_id || !pessoa) {
+    return res.status(400).json({ error: 'Tipo, valor, data de vencimento, categoria e pessoa são obrigatórios.' });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO lancamentos_financeiros (tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [tipo, valor, data_vencimento, data_pagamento || null, categoria_id, pessoa, descricao || null, status || 'pendente']
+    );
+    // Log de auditoria
+    try {
+      await registrarLog({
+        usuario_id: req.body.usuario_id || 0,
+        usuario_nome: req.body.usuario_nome || 'Desconhecido',
+        acao: 'CREATE',
+        entidade: 'transacao',
+        entidade_id: result.insertId,
+        detalhes: { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status }
+      });
+    } catch (logErr) {
+      console.error('Erro ao registrar log (CREATE TRANSACAO):', logErr);
+    }
+    res.status(201).json({ id: result.insertId, tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao criar lançamento', details: error.message });
+  }
+});
+
+app.put('/api/transacoes-financeiras/:id', async (req, res) => {
+  const { id } = req.params;
+  const { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status } = req.body;
+  if (!tipo || !valor || !data_vencimento || !categoria_id || !pessoa) {
+    return res.status(400).json({ error: 'Tipo, valor, data de vencimento, categoria e pessoa são obrigatórios.' });
+  }
+  try {
+    // Buscar dados antigos para log
+    const [oldRows] = await pool.query('SELECT * FROM lancamentos_financeiros WHERE id = ?', [id]);
+    await pool.query(
+      'UPDATE lancamentos_financeiros SET tipo = ?, valor = ?, data_vencimento = ?, data_pagamento = ?, categoria_id = ?, pessoa = ?, descricao = ?, status = ? WHERE id = ?',
+      [tipo, valor, data_vencimento, data_pagamento || null, categoria_id, pessoa, descricao || null, status || 'pendente', id]
+    );
+    // Log de auditoria
+    try {
+      await registrarLog({
+        usuario_id: req.body.usuario_id || 0,
+        usuario_nome: req.body.usuario_nome || 'Desconhecido',
+        acao: 'UPDATE',
+        entidade: 'transacao',
+        entidade_id: id,
+        detalhes: { antes: oldRows[0], depois: { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status } }
+      });
+    } catch (logErr) {
+      console.error('Erro ao registrar log (UPDATE TRANSACAO):', logErr);
+    }
+    res.json({ id, tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao editar lançamento', details: error.message });
+  }
+});
+
+app.delete('/api/transacoes-financeiras/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Buscar dados antigos para log
+    const [oldRows] = await pool.query('SELECT * FROM lancamentos_financeiros WHERE id = ?', [id]);
+    await pool.query('DELETE FROM lancamentos_financeiros WHERE id = ?', [id]);
+    // Log de auditoria
+    try {
+      await registrarLog({
+        usuario_id: req.body.usuario_id || 0,
+        usuario_nome: req.body.usuario_nome || 'Desconhecido',
+        acao: 'DELETE',
+        entidade: 'transacao',
+        entidade_id: id,
+        detalhes: { removido: oldRows[0] }
+      });
+    } catch (logErr) {
+      console.error('Erro ao registrar log (DELETE TRANSACAO):', logErr);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao excluir lançamento', details: error.message });
+  }
+});
+
+// Endpoint para listar logs de auditoria
+app.get('/api/auditoria/logs', async (req, res) => {
+  try {
+    const { usuario_nome, acao, entidade } = req.query;
+    let sql = 'SELECT * FROM auditoria WHERE 1=1';
+    const params = [];
+    if (usuario_nome) {
+      sql += ' AND TRIM(LOWER(usuario_nome)) LIKE ?';
+      params.push(`%${usuario_nome.toString().trim().toLowerCase()}%`);
+    }
+    if (acao) {
+      sql += ' AND acao = ?';
+      params.push(acao);
+    }
+    if (entidade) {
+      sql += ' AND entidade = ?';
+      params.push(entidade);
+    }
+    sql += ' ORDER BY data_hora DESC LIMIT 100';
+    console.log('Filtros recebidos:', req.query);
+    console.log('Query SQL:', sql, params);
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar logs de auditoria', details: error.message });
+  }
+});
+
+// Endpoint para criar usuário
+app.post('/api/usuarios', async (req, res) => {
+  const { nome, email, senha, role, company, usuario_id, usuario_nome } = req.body;
+  if (!nome || !email || !senha || !role) {
+    return res.status(400).json({ error: 'Nome, e-mail, senha e tipo são obrigatórios.' });
+  }
+  if (!['admin', 'client'].includes(role)) {
+    return res.status(400).json({ error: 'Tipo de usuário inválido.' });
+  }
+  try {
+    // Verifica se o e-mail já existe
+    const [rows] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
+    if (rows.length > 0) {
+      return res.status(409).json({ error: 'E-mail já cadastrado.' });
+    }
+    // Hash da senha
+    const hash = await bcrypt.hash(senha, 10);
+    const [result] = await pool.query(
+      'INSERT INTO users (name, email, password, role, company) VALUES (?, ?, ?, ?, ?)',
+      [nome, email, hash, role, company || null]
+    );
+    // Log de auditoria
+    try {
+      await registrarLog({
+        usuario_id: usuario_id || 0,
+        usuario_nome: usuario_nome || 'Desconhecido',
+        acao: 'CREATE',
+        entidade: 'usuario',
+        entidade_id: result.insertId,
+        detalhes: { nome, email, role, company }
+      });
+    } catch (logErr) {
+      console.error('Erro ao registrar log (CREATE USUARIO):', logErr);
+    }
+    res.status(201).json({ id: result.insertId, nome, email, role, company });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao criar usuário', details: error.message });
+  }
+});
+
+// Endpoint para listar usuários com filtros
+app.get('/api/usuarios-lista', async (req, res) => {
+  try {
+    const { nome, email, role } = req.query;
+    let sql = 'SELECT id, name, email, role, company FROM users WHERE 1=1';
+    const params = [];
+    if (nome) {
+      sql += ' AND TRIM(LOWER(name)) LIKE ?';
+      params.push(`%${nome.toString().trim().toLowerCase()}%`);
+    }
+    if (email) {
+      sql += ' AND TRIM(LOWER(email)) LIKE ?';
+      params.push(`%${email.toString().trim().toLowerCase()}%`);
+    }
+    if (role) {
+      sql += ' AND role = ?';
+      params.push(role);
+    }
+    sql += ' ORDER BY name';
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar usuários', details: error.message });
+  }
+});
+
+// Endpoint para editar usuário
+app.put('/api/usuarios/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nome, email, senha, role, company, usuario_id, usuario_nome } = req.body;
+  if (!nome || !email || !role) {
+    return res.status(400).json({ error: 'Nome, e-mail e tipo são obrigatórios.' });
+  }
+  if (!['admin', 'client'].includes(role)) {
+    return res.status(400).json({ error: 'Tipo de usuário inválido.' });
+  }
+  try {
+    // Verifica se o e-mail já existe em outro usuário
+    const [rows] = await pool.query('SELECT id FROM users WHERE email = ? AND id <> ?', [email, id]);
+    if (rows.length > 0) {
+      return res.status(409).json({ error: 'E-mail já cadastrado em outro usuário.' });
+    }
+    let sql = 'UPDATE users SET name = ?, email = ?, role = ?, company = ?';
+    const params = [nome, email, role, company || null];
+    if (senha) {
+      const hash = await bcrypt.hash(senha, 10);
+      sql += ', password = ?';
+      params.push(hash);
+    }
+    sql += ' WHERE id = ?';
+    params.push(id);
+    await pool.query(sql, params);
+    // Log de auditoria
+    try {
+      await registrarLog({
+        usuario_id: usuario_id || 0,
+        usuario_nome: usuario_nome || 'Desconhecido',
+        acao: 'UPDATE',
+        entidade: 'usuario',
+        entidade_id: id,
+        detalhes: { nome, email, role, company, senha: !!senha }
+      });
+    } catch (logErr) {
+      console.error('Erro ao registrar log (UPDATE USUARIO):', logErr);
+    }
+    res.json({ id, name: nome, email, role, company });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao editar usuário', details: error.message });
+  }
+});
+
+// Endpoint para excluir usuário
+app.delete('/api/usuarios/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuario_id, usuario_nome } = req.body;
+  try {
+    // Buscar dados antigos para log
+    const [oldRows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+    await pool.query('DELETE FROM users WHERE id = ?', [id]);
+    // Log de auditoria
+    try {
+      await registrarLog({
+        usuario_id: usuario_id || 0,
+        usuario_nome: usuario_nome || 'Desconhecido',
+        acao: 'DELETE',
+        entidade: 'usuario',
+        entidade_id: id,
+        detalhes: { removido: oldRows[0] }
+      });
+    } catch (logErr) {
+      console.error('Erro ao registrar log (DELETE USUARIO):', logErr);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao excluir usuário', details: error.message });
+  }
+});
+
+// Rotas de contas fixas
+app.get('/api/contas-fixas', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT cf.*, c.nome as categoria_nome, u.name as pessoa_nome
+      FROM contas_fixas cf
+      LEFT JOIN categorias_financeiras c ON cf.categoria_id = c.id
+      LEFT JOIN users u ON cf.pessoa = u.id
+      ORDER BY cf.dia_vencimento, cf.descricao
+    `);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar contas fixas', details: error.message });
+  }
+});
+
+app.post('/api/contas-fixas', async (req, res) => {
+  const { descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim } = req.body;
+  if (!descricao || !valor || !tipo || !categoria_id || !dia_vencimento || !data_inicio) {
+    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO contas_fixas (descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [descricao, valor, tipo, categoria_id, pessoa || null, dia_vencimento, status || 'ativa', data_inicio, data_fim || null]
+    );
+    res.status(201).json({ id: result.insertId, descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar conta fixa', details: error.message });
+  }
+});
+
+app.put('/api/contas-fixas/:id', async (req, res) => {
+  const { id } = req.params;
+  const { descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim } = req.body;
+  if (!descricao || !valor || !tipo || !categoria_id || !dia_vencimento || !data_inicio) {
+    return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
+  }
+  try {
+    await pool.query(
+      'UPDATE contas_fixas SET descricao=?, valor=?, tipo=?, categoria_id=?, pessoa=?, dia_vencimento=?, status=?, data_inicio=?, data_fim=? WHERE id=?',
+      [descricao, valor, tipo, categoria_id, pessoa || null, dia_vencimento, status || 'ativa', data_inicio, data_fim || null, id]
+    );
+    res.json({ id, descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao editar conta fixa', details: error.message });
+  }
+});
+
+app.delete('/api/contas-fixas/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM contas_fixas WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao excluir conta fixa', details: error.message });
+  }
+});
+
+// CRUD de fornecedores
+app.get('/api/fornecedores', async (req, res) => {
+  try {
+    const { nome, tipo, documento } = req.query;
+    let sql = 'SELECT * FROM fornecedores WHERE 1=1';
+    const params = [];
+    if (nome) {
+      sql += ' AND TRIM(LOWER(nome)) LIKE ?';
+      params.push(`%${nome.toString().trim().toLowerCase()}%`);
+    }
+    if (tipo) {
+      sql += ' AND tipo = ?';
+      params.push(tipo);
+    }
+    if (documento) {
+      sql += ' AND documento = ?';
+      params.push(documento);
+    }
+    sql += ' ORDER BY nome';
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar fornecedores', details: error.message });
+  }
+});
+
+app.post('/api/fornecedores', async (req, res) => {
+  const { nome, tipo, documento, email, telefone, endereco, cidade, estado, cep, observacoes } = req.body;
+  if (!nome || !tipo) {
+    return res.status(400).json({ error: 'Nome e tipo são obrigatórios.' });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO fornecedores (nome, tipo, documento, email, telefone, endereco, cidade, estado, cep, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome, tipo, documento || null, email || null, telefone || null, endereco || null, cidade || null, estado || null, cep || null, observacoes || null]
+    );
+    res.status(201).json({ id: result.insertId, nome, tipo, documento, email, telefone, endereco, cidade, estado, cep, observacoes });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao criar fornecedor', details: error.message });
+  }
+});
+
+app.put('/api/fornecedores/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nome, tipo, documento, email, telefone, endereco, cidade, estado, cep, observacoes } = req.body;
+  if (!nome || !tipo) {
+    return res.status(400).json({ error: 'Nome e tipo são obrigatórios.' });
+  }
+  try {
+    await pool.query(
+      'UPDATE fornecedores SET nome=?, tipo=?, documento=?, email=?, telefone=?, endereco=?, cidade=?, estado=?, cep=?, observacoes=? WHERE id=?',
+      [nome, tipo, documento || null, email || null, telefone || null, endereco || null, cidade || null, estado || null, cep || null, observacoes || null, id]
+    );
+    res.json({ id, nome, tipo, documento, email, telefone, endereco, cidade, estado, cep, observacoes });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao editar fornecedor', details: error.message });
+  }
+});
+
+app.delete('/api/fornecedores/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM fornecedores WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao excluir fornecedor', details: error.message });
+  }
+});
+
+// --- CHAT INTERNO ---
+// Lista de usuários para chat (admins e clientes) + quantidade de mensagens não lidas
+app.get('/api/chat/usuarios', async (req, res) => {
+  const { usuario_id } = req.query;
+  try {
+    const [rows] = await pool.query('SELECT id, name, email, role FROM users ORDER BY name');
+    if (!usuario_id) return res.json(rows);
+    // Para cada usuário, buscar quantas mensagens não lidas para o usuario_id
+    const promises = rows.map(async (u) => {
+      const [unread] = await pool.query(
+        'SELECT COUNT(*) as total FROM mensagens_chat WHERE remetente_id = ? AND destinatario_id = ? AND lida = 0',
+        [u.id, usuario_id]
+      );
+      return { ...u, unread_count: unread[0].total };
+    });
+    const result = await Promise.all(promises);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar usuários do chat', details: error.message });
+  }
+});
+
+// Lista mensagens entre dois usuários (usuário logado e outro)
+app.get('/api/chat/mensagens', async (req, res) => {
+  const { usuario_id, com } = req.query;
+  if (!usuario_id || !com) {
+    return res.status(400).json({ error: 'Informe usuario_id e com (id do outro usuário).' });
+  }
+  try {
+    const [rows] = await pool.query(
+      `SELECT * FROM mensagens_chat
+       WHERE (remetente_id = ? AND destinatario_id = ?)
+          OR (remetente_id = ? AND destinatario_id = ?)
+       ORDER BY criada_em ASC`,
+      [usuario_id, com, com, usuario_id]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar mensagens', details: error.message });
+  }
+});
+
+// Enviar nova mensagem
+app.post('/api/chat/mensagens', async (req, res) => {
+  const { remetente_id, destinatario_id, mensagem } = req.body;
+  if (!remetente_id || !destinatario_id || !mensagem) {
+    return res.status(400).json({ error: 'remetente_id, destinatario_id e mensagem são obrigatórios.' });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO mensagens_chat (remetente_id, destinatario_id, mensagem) VALUES (?, ?, ?)',
+      [remetente_id, destinatario_id, mensagem]
+    );
+    res.status(201).json({ id: result.insertId, remetente_id, destinatario_id, mensagem });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao enviar mensagem', details: error.message });
+  }
+});
+
+// Marcar mensagem como lida
+app.patch('/api/chat/mensagens/:id/lida', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('UPDATE mensagens_chat SET lida = 1 WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao marcar mensagem como lida', details: error.message });
   }
 });
 

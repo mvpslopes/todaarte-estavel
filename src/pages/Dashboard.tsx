@@ -1,54 +1,55 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Sidebar } from '../components/dashboard/Sidebar';
 import { AdminDashboard } from '../components/dashboard/admin/AdminDashboard';
 import { ProjectManagement } from '../components/dashboard/admin/ProjectManagement';
 import { ClientDashboard } from '../components/dashboard/client/ClientDashboard';
 import { ClientProjects } from '../components/dashboard/client/ClientProjects';
 import { useAuth } from '../contexts/AuthContext';
+import { FinancialCategories } from '../components/dashboard/admin/FinancialCategories';
+import { AuditLogs } from '../components/dashboard/admin/AuditLogs';
+import { UserManagement } from '../components/dashboard/admin/UserManagement';
+import { FinancialTransactions } from '../components/dashboard/admin/FinancialTransactions';
+import FixedAccounts from '../components/dashboard/admin/FixedAccounts';
+import Suppliers from '../components/dashboard/admin/Suppliers';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Chat from '../components/dashboard/Chat';
 
 export function Dashboard() {
-  const [activeSection, setActiveSection] = useState('dashboard');
   const { user } = useAuth();
-
-  const renderContent = () => {
-    if (user?.role === 'admin') {
-      switch (activeSection) {
-        case 'dashboard':
-          return <AdminDashboard />;
-        case 'projects':
-          return <ProjectManagement />;
-        case 'clients':
-          return <div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Clientes</h1><p>Em desenvolvimento...</p></div>;
-        case 'portfolio':
-          return <div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Portfólio</h1><p>Em desenvolvimento...</p></div>;
-        case 'financials':
-          return <div className="p-8"><h1 className="text-2xl font-bold">Financeiro</h1><p>Em desenvolvimento...</p></div>;
-        case 'settings':
-          return <div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>;
-        default:
-          return <AdminDashboard />;
-      }
-    } else {
-      switch (activeSection) {
-        case 'dashboard':
-          return <ClientDashboard />;
-        case 'projects':
-          return <ClientProjects />;
-        case 'messages':
-          return <div className="p-8"><h1 className="text-2xl font-bold">Mensagens</h1><p>Em desenvolvimento...</p></div>;
-        case 'settings':
-          return <div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>;
-        default:
-          return <ClientDashboard />;
-      }
-    }
-  };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-      <div className="flex-1 overflow-auto">
-        {renderContent()}
+      <Sidebar />
+      <div className="flex-1">
+        <Routes>
+          {/* Rotas para admin */}
+          {user?.role === 'admin' && <>
+            <Route path="" element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="projects" element={<ProjectManagement />} />
+            <Route path="clients" element={<div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Clientes</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="portfolio" element={<div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Portfólio</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="financials-dashboard" element={<div className="p-8"><h1 className="text-2xl font-bold">Dashboard Financeiro</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="financials-categories" element={<FinancialCategories />} />
+            <Route path="financial-transactions" element={<FinancialTransactions />} />
+            <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="audit-logs" element={<AuditLogs />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="financial-accounts" element={<FixedAccounts />} />
+            <Route path="fornecedores" element={<Suppliers />} />
+            <Route path="messages" element={user ? <Chat usuarioId={Number(user.id)} /> : null} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </>}
+          {/* Rotas para cliente */}
+          {user?.role === 'client' && <>
+            <Route path="" element={<ClientDashboard />} />
+            <Route path="dashboard" element={<ClientDashboard />} />
+            <Route path="projects" element={<ClientProjects />} />
+            <Route path="messages" element={<div className="p-8"><h1 className="text-2xl font-bold">Mensagens</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </>}
+        </Routes>
       </div>
     </div>
   );
