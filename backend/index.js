@@ -713,11 +713,11 @@ app.get('/api/atividades', async (req, res) => {
 });
 
 app.post('/api/atividades', async (req, res) => {
-  const { responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo } = req.body;
+  const { responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo } = req.body;
   try {
     const [result] = await pool.query(
-      'INSERT INTO atividades (responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo]
+      'INSERT INTO atividades (responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo]
     );
     res.json({ id: result.insertId });
   } catch (err) {
@@ -726,11 +726,11 @@ app.post('/api/atividades', async (req, res) => {
 });
 
 app.put('/api/atividades/:id', async (req, res) => {
-  const { responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo } = req.body;
+  const { responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo } = req.body;
   try {
     const [result] = await pool.query(
-      'UPDATE atividades SET responsavel=?, atividade=?, cliente=?, data_pedido=?, data_entrega=?, status=?, arquivo=? WHERE id=?',
-      [responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo, req.params.id]
+      'UPDATE atividades SET responsavel=?, atividade=?, cliente=?, data_pedido=?, data_realizacao=?, data_entrega=?, status=?, arquivo=? WHERE id=?',
+      [responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo, req.params.id]
     );
     res.json({ changes: result.affectedRows });
   } catch (err) {
