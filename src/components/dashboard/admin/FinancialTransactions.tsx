@@ -16,6 +16,9 @@ interface Transaction {
   data_vencimento?: string;
   data_pagamento?: string;
   pessoa?: string;
+  pessoa_nome?: string;
+  pessoa_tipo?: 'cliente' | 'fornecedor';
+  status: string;
 }
 
 interface CategoriaFinanceira {
@@ -27,6 +30,11 @@ interface CategoriaFinanceira {
 interface User {
   id: number;
   name: string;
+}
+
+interface Fornecedor {
+  id: number;
+  nome: string;
 }
 
 const API_TRANSACOES = '/api/transacoes-financeiras';
@@ -64,6 +72,11 @@ export function FinancialTransactions() {
   const [clientes, setClientes] = useState<User[]>([]);
   const [cliLoading, setCliLoading] = useState(false);
   const [cliError, setCliError] = useState<string | null>(null);
+
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [fornLoading, setFornLoading] = useState(false);
+  const [fornError, setFornError] = useState<string | null>(null);
+  const [pessoaTipo, setPessoaTipo] = useState<'cliente' | 'fornecedor'>('cliente');
 
   const [editId, setEditId] = useState<number | null>(null);
 
@@ -141,6 +154,7 @@ export function FinancialTransactions() {
         data_pagamento: dataPagamento || null,
         categoria_id: Number(categoriaId),
         pessoa: Number(clienteId),
+        pessoa_tipo: pessoaTipo,
         descricao,
         usuario_id: user?.id,
         usuario_nome: user?.name
@@ -211,9 +225,42 @@ export function FinancialTransactions() {
       .finally(() => setCliLoading(false));
   }, []);
 
+  // Buscar fornecedores ao carregar
+  useEffect(() => {
+    setFornLoading(true);
+    fetch('/api/fornecedores')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFornecedores(data);
+          setFornError(null);
+        } else {
+          setFornecedores([]);
+          setFornError(data?.error || 'Erro ao buscar fornecedores.');
+        }
+      })
+      .catch(() => setFornError('Erro ao buscar fornecedores.'))
+      .finally(() => setFornLoading(false));
+  }, []);
+
+  // Atualizar pessoaTipo conforme tipo selecionado
+  useEffect(() => {
+    setPessoaTipo(tipo === 'despesa' ? 'fornecedor' : 'cliente');
+    setClienteId('');
+    // Garantir que não retorna nada
+    return undefined;
+  }, [tipo]);
+
   // Função utilitária para pegar o nome do cliente
   function getClienteNome(tx: any) {
     return tx.cliente_nome || tx.name || tx.pessoa_nome || tx.pessoa || '-';
+  }
+
+  function formatDateInput(dateStr?: string) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
   }
 
   // Função para abrir modal de edição
@@ -221,12 +268,33 @@ export function FinancialTransactions() {
     setEditId(tx.id);
     setTipo(tx.tipo);
     setValor(String(tx.valor));
-    setData(tx.data_vencimento || '');
-    setDataPagamento(tx.data_pagamento || '');
+    setData(formatDateInput(tx.data_vencimento));
+    setDataPagamento(formatDateInput(tx.data_pagamento));
     setCategoriaId(String(tx.categoria_id || ''));
     setClienteId(String(tx.pessoa || ''));
+    setPessoaTipo(tx.pessoa_tipo || (tx.tipo === 'despesa' ? 'fornecedor' : 'cliente'));
     setDescricao(tx.descricao || '');
     setShowModal(true);
+  }
+
+  async function handleDelete(id: number) {
+    if (!window.confirm('Tem certeza que deseja excluir esta transação?')) return;
+    try {
+      const res = await fetch(`${API_TRANSACOES}/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erro ao excluir transação');
+      await fetchTransactions();
+    } catch (err) {
+      alert('Erro ao excluir transação.');
+    }
+  }
+
+  async function handleStatusChange(id: number, status: string) {
+    await fetch(`/api/transacoes-financeiras/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    fetchTransactions();
   }
 
   return (
@@ -295,8 +363,9 @@ export function FinancialTransactions() {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vencimento</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Favorecido / Cliente</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
               </tr>
             </thead>
@@ -304,7 +373,7 @@ export function FinancialTransactions() {
               {transactions.length === 0 ? (
                 <tr><td colSpan={6} className="text-center text-gray-400 py-8">Nenhuma transação encontrada.</td></tr>
               ) : transactions.map(tx => (
-                <tr key={tx.id} className="border-b last:border-b-0 hover:bg-gray-50 transition-colors">
+                <tr key={tx.id} className={`border-b last:border-b-0 hover:bg-gray-50 transition-colors ${tx.status === 'pago' ? 'bg-green-200' : ''}`}>
                   <td className="px-4 py-2 whitespace-nowrap text-sm font-semibold text-gray-700">
                     {tx.tipo === 'receita' ? 'Receita' : 'Despesa'}
                   </td>
@@ -313,14 +382,48 @@ export function FinancialTransactions() {
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.data_vencimento ? new Date(tx.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.categoria_nome}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{getClienteNome(tx)}</td>
+                  <td className="px-4 py-2 text-sm text-gray-700 align-middle break-words">
+                    {tx.pessoa_nome}
+                    <span
+                      className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold inline-flex items-center
+                        ${tx.pessoa_tipo === 'fornecedor'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'bg-green-100 text-green-800 border border-green-200'
+                        }`}
+                      style={{ verticalAlign: 'middle' }}
+                    >
+                      {tx.pessoa_tipo === 'fornecedor' ? 'Fornecedor' : 'Cliente'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.descricao || '-'}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    <select
+                      value={tx.status}
+                      onChange={e => handleStatusChange(tx.id, e.target.value)}
+                      className="border rounded px-2 py-1 text-xs bg-white"
+                      style={{ minWidth: 80 }}
+                    >
+                      <option value="pendente">Pendente</option>
+                      <option value="pago">Pago</option>
+                    </select>
+                    {tx.status === 'pago' && (
+                      <span className="ml-2 px-2 py-0.5 rounded-full bg-green-700 text-white text-xs font-bold inline-flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        Pago
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                     <button
                       className="text-blue-600 hover:underline mr-2"
                       onClick={() => handleEdit(tx)}
                       title="Editar"
                     >Editar</button>
+                    <button
+                      className="text-red-600 hover:underline"
+                      onClick={() => handleDelete(tx.id)}
+                      title="Excluir"
+                    >Excluir</button>
                   </td>
                 </tr>
               ))}
@@ -399,19 +502,21 @@ export function FinancialTransactions() {
                 {catError && <span className="text-xs text-red-500 ml-2">{catError}</span>}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="font-semibold text-gray-800 tracking-wide">Cliente</label>
+                <label className="font-semibold text-gray-800 tracking-wide">{tipo === 'despesa' ? 'Fornecedor' : 'Cliente'}</label>
                 <select
                   value={clienteId}
                   onChange={e => setClienteId(e.target.value)}
                   className="input input-bordered w-full border-gray-300 shadow-sm focus:border-logo focus:ring-2 focus:ring-logo-light transition-all"
                   required
-                  disabled={cliLoading}
+                  disabled={tipo === 'despesa' ? fornLoading : cliLoading}
                 >
-                  <option value="">Cliente</option>
-                  {clientes.map(cli => <option key={cli.id} value={cli.id}>{cli.name}</option>)}
+                  <option value="">{tipo === 'despesa' ? 'Selecione o fornecedor' : 'Selecione o cliente'}</option>
+                  {tipo === 'despesa'
+                    ? fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)
+                    : clientes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                {cliLoading && <span className="text-xs text-gray-400 ml-2">Carregando clientes...</span>}
-                {cliError && <span className="text-xs text-red-500 ml-2">{cliError}</span>}
+                {(tipo === 'despesa' ? fornLoading : cliLoading) && <span className="text-xs text-gray-400 ml-2">Carregando...</span>}
+                {(tipo === 'despesa' ? fornError : cliError) && <span className="text-xs text-red-500 ml-2">{tipo === 'despesa' ? fornError : cliError}</span>}
               </div>
               <div className="md:col-span-2 flex flex-col gap-2">
                 <label className="font-semibold text-gray-800 tracking-wide">Descrição (opcional)</label>

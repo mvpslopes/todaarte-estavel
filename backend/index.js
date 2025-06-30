@@ -155,12 +155,18 @@ app.get('/api/transacoes-financeiras', async (req, res) => {
         lf.descricao,
         cf.nome as categoria_nome,
         lf.pessoa,
-        u.name as cliente_nome,
+        lf.pessoa_tipo,
+        CASE 
+          WHEN lf.pessoa_tipo = 'cliente' THEN u.name
+          WHEN lf.pessoa_tipo = 'fornecedor' THEN f.nome
+          ELSE '-'
+        END as pessoa_nome,
         lf.criado_em,
         lf.atualizado_em
       FROM lancamentos_financeiros lf
       LEFT JOIN categorias_financeiras cf ON lf.categoria_id = cf.id
-      LEFT JOIN users u ON lf.pessoa = u.id
+      LEFT JOIN users u ON lf.pessoa_tipo = 'cliente' AND lf.pessoa = u.id
+      LEFT JOIN fornecedores f ON lf.pessoa_tipo = 'fornecedor' AND lf.pessoa = f.id
       WHERE 1=1
     `;
     const params = [];
@@ -173,8 +179,8 @@ app.get('/api/transacoes-financeiras', async (req, res) => {
       params.push(categoria);
     }
     if (cliente) {
-      sql += ' AND (u.name LIKE ? OR lf.pessoa = ?)';
-      params.push(`%${cliente}%`, cliente);
+      sql += ' AND ((u.name LIKE ?) OR (f.nome LIKE ?) OR lf.pessoa = ?)';
+      params.push(`%${cliente}%`, `%${cliente}%`, cliente);
     }
     if (status) {
       sql += ' AND lf.status = ?';
@@ -190,9 +196,7 @@ app.get('/api/transacoes-financeiras', async (req, res) => {
     }
     sql += ' ORDER BY lf.data_vencimento DESC, lf.id DESC';
     const [rows] = await pool.query(sql, params);
-    // Forçar o campo cliente_nome a ser string ou '-' se nulo
-    const result = rows.map(row => ({ ...row, cliente_nome: row.cliente_nome || '-' }));
-    res.json(result);
+    res.json(rows);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao buscar lançamentos', details: error.message });
@@ -200,14 +204,14 @@ app.get('/api/transacoes-financeiras', async (req, res) => {
 });
 
 app.post('/api/transacoes-financeiras', async (req, res) => {
-  const { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status } = req.body;
-  if (!tipo || !valor || !data_vencimento || !categoria_id || !pessoa) {
-    return res.status(400).json({ error: 'Tipo, valor, data de vencimento, categoria e pessoa são obrigatórios.' });
+  const { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status } = req.body;
+  if (!tipo || !valor || !data_vencimento || !categoria_id || !pessoa || !pessoa_tipo) {
+    return res.status(400).json({ error: 'Tipo, valor, data de vencimento, categoria, pessoa e pessoa_tipo são obrigatórios.' });
   }
   try {
     const [result] = await pool.query(
-      'INSERT INTO lancamentos_financeiros (tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [tipo, valor, data_vencimento, data_pagamento || null, categoria_id, pessoa, descricao || null, status || 'pendente']
+      'INSERT INTO lancamentos_financeiros (tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [tipo, valor, data_vencimento, data_pagamento || null, categoria_id, pessoa, pessoa_tipo, descricao || null, status || 'pendente']
     );
     // Log de auditoria
     try {
@@ -217,12 +221,12 @@ app.post('/api/transacoes-financeiras', async (req, res) => {
         acao: 'CREATE',
         entidade: 'transacao',
         entidade_id: result.insertId,
-        detalhes: { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status }
+        detalhes: { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status }
       });
     } catch (logErr) {
       console.error('Erro ao registrar log (CREATE TRANSACAO):', logErr);
     }
-    res.status(201).json({ id: result.insertId, tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status });
+    res.status(201).json({ id: result.insertId, tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao criar lançamento', details: error.message });
@@ -231,16 +235,16 @@ app.post('/api/transacoes-financeiras', async (req, res) => {
 
 app.put('/api/transacoes-financeiras/:id', async (req, res) => {
   const { id } = req.params;
-  const { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status } = req.body;
-  if (!tipo || !valor || !data_vencimento || !categoria_id || !pessoa) {
-    return res.status(400).json({ error: 'Tipo, valor, data de vencimento, categoria e pessoa são obrigatórios.' });
+  const { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status } = req.body;
+  if (!tipo || !valor || !data_vencimento || !categoria_id || !pessoa || !pessoa_tipo) {
+    return res.status(400).json({ error: 'Tipo, valor, data de vencimento, categoria, pessoa e pessoa_tipo são obrigatórios.' });
   }
   try {
     // Buscar dados antigos para log
     const [oldRows] = await pool.query('SELECT * FROM lancamentos_financeiros WHERE id = ?', [id]);
     await pool.query(
-      'UPDATE lancamentos_financeiros SET tipo = ?, valor = ?, data_vencimento = ?, data_pagamento = ?, categoria_id = ?, pessoa = ?, descricao = ?, status = ? WHERE id = ?',
-      [tipo, valor, data_vencimento, data_pagamento || null, categoria_id, pessoa, descricao || null, status || 'pendente', id]
+      'UPDATE lancamentos_financeiros SET tipo = ?, valor = ?, data_vencimento = ?, data_pagamento = ?, categoria_id = ?, pessoa = ?, pessoa_tipo = ?, descricao = ?, status = ? WHERE id = ?',
+      [tipo, valor, data_vencimento, data_pagamento || null, categoria_id, pessoa, pessoa_tipo, descricao || null, status || 'pendente', id]
     );
     // Log de auditoria
     try {
@@ -250,12 +254,12 @@ app.put('/api/transacoes-financeiras/:id', async (req, res) => {
         acao: 'UPDATE',
         entidade: 'transacao',
         entidade_id: id,
-        detalhes: { antes: oldRows[0], depois: { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status } }
+        detalhes: { antes: oldRows[0], depois: { tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status } }
       });
     } catch (logErr) {
       console.error('Erro ao registrar log (UPDATE TRANSACAO):', logErr);
     }
-    res.json({ id, tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, descricao, status });
+    res.json({ id, tipo, valor, data_vencimento, data_pagamento, categoria_id, pessoa, pessoa_tipo, descricao, status });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao editar lançamento', details: error.message });
@@ -285,6 +289,20 @@ app.delete('/api/transacoes-financeiras/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao excluir lançamento', details: error.message });
+  }
+});
+
+app.patch('/api/transacoes-financeiras/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!['pendente', 'pago'].includes(status)) {
+    return res.status(400).json({ error: 'Status inválido.' });
+  }
+  try {
+    await pool.query('UPDATE lancamentos_financeiros SET status = ? WHERE id = ?', [status, id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao atualizar status', details: error.message });
   }
 });
 
@@ -474,7 +492,7 @@ app.get('/api/contas-fixas', async (req, res) => {
 });
 
 app.post('/api/contas-fixas', async (req, res) => {
-  const { descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim } = req.body;
+  const { descricao, valor, tipo, categoria_id, pessoa, pessoa_tipo, dia_vencimento, status, data_inicio, data_fim } = req.body;
   if (!descricao || !valor || !tipo || !categoria_id || !dia_vencimento || !data_inicio) {
     return res.status(400).json({ error: 'Preencha todos os campos obrigatórios.' });
   }
@@ -483,7 +501,35 @@ app.post('/api/contas-fixas', async (req, res) => {
       'INSERT INTO contas_fixas (descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [descricao, valor, tipo, categoria_id, pessoa || null, dia_vencimento, status || 'ativa', data_inicio, data_fim || null]
     );
-    res.status(201).json({ id: result.insertId, descricao, valor, tipo, categoria_id, pessoa, dia_vencimento, status, data_inicio, data_fim });
+    // Gerar lançamentos recorrentes
+    function gerarVencimentos(dataInicio, dataFim, diaVencimento) {
+      const vencimentos = [];
+      let atual = new Date(dataInicio);
+      const fim = dataFim ? new Date(dataFim) : null;
+      while (!fim || atual <= fim) {
+        const ano = atual.getFullYear();
+        const mes = atual.getMonth();
+        const data = new Date(ano, mes, diaVencimento);
+        if (data >= new Date(dataInicio) && (!fim || data <= fim)) {
+          vencimentos.push(data.toISOString().slice(0, 10));
+        }
+        atual.setMonth(atual.getMonth() + 1);
+        if (!fim && vencimentos.length > 60) break; // segurança: não gerar mais de 5 anos
+      }
+      return vencimentos;
+    }
+    const vencimentos = gerarVencimentos(data_inicio, data_fim, dia_vencimento);
+    const tipoPessoa = pessoa_tipo || (tipo === 'despesa' ? 'fornecedor' : 'cliente');
+    for (const data_vencimento of vencimentos) {
+      console.log('Lançamento gerado:', {
+        tipo, valor, data_vencimento, categoria_id, pessoa, pessoa_tipo: tipoPessoa, descricao
+      });
+      await pool.query(
+        'INSERT INTO lancamentos_financeiros (tipo, valor, data_vencimento, categoria_id, pessoa, pessoa_tipo, descricao, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [tipo, valor, data_vencimento, categoria_id, pessoa, tipoPessoa, descricao, 'pendente']
+      );
+    }
+    res.status(201).json({ id: result.insertId, descricao, valor, tipo, categoria_id, pessoa, pessoa_tipo, dia_vencimento, status, data_inicio, data_fim });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao criar conta fixa', details: error.message });
   }

@@ -48,7 +48,7 @@ export function Sidebar() {
   const menuItems = user?.role === 'admin' ? adminMenuItems : clientMenuItems;
 
   return (
-    <div className="bg-white min-h-screen w-64 shadow-lg border-r border-gray-200 flex flex-col overflow-y-auto">
+    <div className="bg-white h-screen w-64 shadow-lg border-r border-gray-200 flex flex-col overflow-y-auto">
       <div>
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center space-x-2">
@@ -96,14 +96,14 @@ export function Sidebar() {
                 <span className="ml-auto">{financeOpen ? '▲' : '▼'}</span>
               </button>
               {financeOpen && (
-                <ul className="ml-6 mt-1 space-y-1">
+                <ul className="ml-6 mt-3 space-y-3">
                   {financeMenu.map(f => (
                     <li key={f.id}>
                       <Link
                         to={f.to}
                         className={`w-full text-left px-3 py-2 rounded-lg transition-all duration-200 no-underline ${
                           location.pathname === f.to
-                            ? 'bg-logo-light/30 text-logo font-semibold'
+                            ? 'bg-logo-light/50 text-logo font-semibold'
                             : 'text-gray-700 hover:bg-logo-light/20'
                         }`}
                       >{f.label}</Link>

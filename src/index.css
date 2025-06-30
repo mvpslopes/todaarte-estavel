@@ -5,3 +5,8 @@
 html, body {
   background-color: #f9fafb;
 }
+
+.input-focus-custom:focus {
+  border-color: #AC8869 !important;
+  box-shadow: 0 0 0 2px #F5E9DF99 !important;
+}

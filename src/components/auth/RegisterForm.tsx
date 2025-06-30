@@ -88,7 +88,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
                 required
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus-custom transition-all"
                 placeholder="Seu nome"
               />
             </div>
@@ -103,7 +103,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus-custom transition-all"
                 placeholder="seu@email.com"
               />
             </div>
@@ -119,7 +119,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg input-focus-custom transition-all"
                   placeholder="••••••••"
                 />
                 <button
@@ -140,7 +140,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus-custom transition-all"
               >
                 <option value="client">Cliente</option>
                 <option value="admin">Administrador</option>
@@ -157,7 +157,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg input-focus-custom transition-all"
                   placeholder="Nome da empresa"
                 />
               </div>

@@ -13,6 +13,7 @@ import FixedAccounts from '../components/dashboard/admin/FixedAccounts';
 import Suppliers from '../components/dashboard/admin/Suppliers';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Chat from '../components/dashboard/Chat';
+import FinancialDashboard from '../components/dashboard/admin/FinancialDashboard';
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -29,7 +30,7 @@ export function Dashboard() {
             <Route path="projects" element={<ProjectManagement />} />
             <Route path="clients" element={<div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Clientes</h1><p>Em desenvolvimento...</p></div>} />
             <Route path="portfolio" element={<div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Portfólio</h1><p>Em desenvolvimento...</p></div>} />
-            <Route path="financials-dashboard" element={<div className="p-8"><h1 className="text-2xl font-bold">Dashboard Financeiro</h1><p>Em desenvolvimento...</p></div>} />
+            <Route path="financials-dashboard" element={<FinancialDashboard />} />
             <Route path="financials-categories" element={<FinancialCategories />} />
             <Route path="financial-transactions" element={<FinancialTransactions />} />
             <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>} />

@@ -23,6 +23,10 @@ interface ContaFixa {
   data_inicio: string;
   data_fim?: string;
 }
+interface Fornecedor {
+  id: number;
+  nome: string;
+}
 
 const API = '/api/contas-fixas';
 const API_CATEGORIAS = '/api/categorias-financeiras';
@@ -32,6 +36,7 @@ export default function FixedAccounts() {
   const [contas, setContas] = useState<ContaFixa[]>([]);
   const [categorias, setCategorias] = useState<CategoriaFinanceira[]>([]);
   const [usuarios, setUsuarios] = useState<User[]>([]);
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -70,6 +75,13 @@ export default function FixedAccounts() {
     fetch(API_USUARIOS)
       .then(res => res.json())
       .then(data => setUsuarios(data));
+  }, []);
+  // Buscar fornecedores
+  useEffect(() => {
+    fetch('/api/fornecedores')
+      .then(res => res.json())
+      .then(data => setFornecedores(data));
+    return undefined;
   }, []);
 
   // Filtrar contas
@@ -224,7 +236,6 @@ export default function FixedAccounts() {
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vencimento</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
@@ -249,7 +260,6 @@ export default function FixedAccounts() {
                   </span>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{conta.categoria_nome || '-'}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{conta.pessoa_nome || '-'}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">Dia {conta.dia_vencimento}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                   {conta.status === 'ativa' ? 
@@ -313,8 +323,10 @@ export default function FixedAccounts() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Cliente/Fornecedor</label>
                   <select name="pessoa" value={form.pessoa} onChange={handleChange} className="input input-bordered w-full bg-gray-50 focus:bg-white focus:ring-2 focus:ring-logo/30 shadow-sm">
-                    <option value="">Selecione um cliente</option>
-                    {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    <option value="">{form.tipo === 'despesa' ? 'Selecione o fornecedor' : 'Selecione o cliente'}</option>
+                    {form.tipo === 'despesa'
+                      ? fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)
+                      : usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </div>
                 <div>
