@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { registrarLog } from './audit.js';
 import { pool } from './db.js';
+import sqlite3 from 'sqlite3';
 
 dotenv.config();
 
@@ -698,6 +699,113 @@ app.patch('/api/chat/mensagens/:id/lida', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao marcar mensagem como lida', details: error.message });
+  }
+});
+
+// --- Endpoints de atividades (agenda) ---
+app.get('/api/atividades', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM atividades ORDER BY data_pedido DESC, id DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/atividades', async (req, res) => {
+  const { responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo } = req.body;
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO atividades (responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo]
+    );
+    res.json({ id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/atividades/:id', async (req, res) => {
+  const { responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo } = req.body;
+  try {
+    const [result] = await pool.query(
+      'UPDATE atividades SET responsavel=?, atividade=?, cliente=?, data_pedido=?, data_entrega=?, status=?, arquivo=? WHERE id=?',
+      [responsavel, atividade, cliente, data_pedido, data_entrega, status, arquivo, req.params.id]
+    );
+    res.json({ changes: result.affectedRows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/atividades/:id', async (req, res) => {
+  try {
+    const [result] = await pool.query('DELETE FROM atividades WHERE id=?', [req.params.id]);
+    res.json({ changes: result.affectedRows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Endpoints de clientes ---
+app.get('/api/clientes', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM clientes ORDER BY nome');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/clientes', async (req, res) => {
+  const { nome, email, telefone, empresa, observacoes, cpf_cnpj } = req.body;
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO clientes (nome, email, telefone, empresa, observacoes, cpf_cnpj) VALUES (?, ?, ?, ?, ?, ?)',
+      [nome, email, telefone, empresa, observacoes, cpf_cnpj]
+    );
+    res.json({ id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/clientes/:id', async (req, res) => {
+  const { nome, email, telefone, empresa, observacoes, cpf_cnpj } = req.body;
+  try {
+    const [result] = await pool.query(
+      'UPDATE clientes SET nome=?, email=?, telefone=?, empresa=?, observacoes=?, cpf_cnpj=? WHERE id=?',
+      [nome, email, telefone, empresa, observacoes, cpf_cnpj, req.params.id]
+    );
+    res.json({ changes: result.affectedRows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/clientes/:id', async (req, res) => {
+  try {
+    const [result] = await pool.query('DELETE FROM clientes WHERE id=?', [req.params.id]);
+    res.json({ changes: result.affectedRows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Endpoint para listar usuários (admins ou todos) ---
+app.get('/api/users', async (req, res) => {
+  const { role } = req.query;
+  let sql = 'SELECT id, name FROM users';
+  const params = [];
+  if (role) {
+    sql += ' WHERE role = ?';
+    params.push(role);
+  }
+  try {
+    const [rows] = await pool.query(sql, params);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

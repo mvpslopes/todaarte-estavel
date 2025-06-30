@@ -8,7 +8,8 @@ import {
   Palette,
   Briefcase,
   MessageSquare,
-  LogOut
+  LogOut,
+  Calendar
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
@@ -20,8 +21,9 @@ export function Sidebar() {
 
   const adminMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+    { id: 'agenda', label: 'Agenda', icon: Calendar, to: '/dashboard/agenda' },
+    { id: 'clientes', label: 'Clientes', icon: Users, to: '/dashboard/clientes' },
     { id: 'users', label: 'Usuários', icon: Users, to: '/dashboard/users' },
-    { id: 'clients', label: 'Clientes', icon: Users, to: '/dashboard/clients' },
     { id: 'projects', label: 'Projetos', icon: FolderOpen, to: '/dashboard/projects' },
     { id: 'portfolio', label: 'Portfólio', icon: Palette, to: '/dashboard/portfolio' },
     { id: 'messages', label: 'Mensagens', icon: MessageSquare, to: '/dashboard/messages' },
@@ -34,9 +36,8 @@ export function Sidebar() {
     { id: 'financial-dashboard', label: 'Dashboard Financeiro', to: '/dashboard/financials-dashboard' },
     { id: 'financial-transactions', label: 'Transações', to: '/dashboard/financial-transactions' },
     { id: 'financial-accounts', label: 'Contas Fixas', to: '/dashboard/financial-accounts' },
-    { id: 'financial-parcels', label: 'Parcelamentos', to: '/dashboard/financial-parcels' },
     { id: 'financials-categories', label: 'Categorias Financeiras', to: '/dashboard/financials-categories' },
-    { id: 'financial-reports', label: 'Relatórios', to: '/dashboard/financial-reports' },
+    { id: 'financial-receipts', label: 'Recibos', to: '/dashboard/financial-receipts' },
   ];
 
   const clientMenuItems = [

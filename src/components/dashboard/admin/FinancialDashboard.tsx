@@ -11,10 +11,13 @@ import {
   ArcElement,
   PointElement,
   LineElement,
+  LineController
 } from 'chart.js';
 import { saveAs } from 'file-saver';
+// @ts-ignore
+import ChartDataLabels from 'chartjs-plugin-datalabels/dist/chartjs-plugin-datalabels.esm.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement, LineController, ChartDataLabels);
 
 interface ResumoFinanceiro {
   totalReceitas: number;
@@ -46,6 +49,7 @@ export default function FinancialDashboard() {
   const [favorecidos, setFavorecidos] = useState<string[]>([]);
   const [periodoComparar, setPeriodoComparar] = useState<{inicio: string, fim: string} | null>(null);
   const [dadosComparar, setDadosComparar] = useState<any[]>([]);
+  const [dadosTodos, setDadosTodos] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchResumo() {
@@ -90,8 +94,11 @@ export default function FinancialDashboard() {
       setLoading(true);
       const res = await fetch('/api/transacoes-financeiras');
       const data = await res.json();
+      setDadosTodos(data); // Salva todos os lançamentos
       // LOG para depuração:
       console.log('Todos os dados recebidos:', data);
+      // LOG para depuração dos favorecidos/clientes
+      console.log('Dados recebidos para favorecidos:', data.map((t: any) => ({ favorecido_nome: t.favorecido_nome, cliente_nome: t.cliente_nome, nome_favorecido: t.nome_favorecido, nome_cliente: t.nome_cliente })));
       // Filtros principais
       let filtrados = data.filter((t: any) => {
         // Usar data_pagamento para pagos, data_vencimento/data para pendentes
@@ -102,7 +109,7 @@ export default function FinancialDashboard() {
         const dentroPeriodo = dataLanc >= new Date(periodo.inicio) && dataLanc <= new Date(periodo.fim);
         const statusOk = filtroStatus === 'todos' || t.status === filtroStatus;
         const categoriaOk = filtroCategoria === 'todos' || (t.categoria_nome || t.categoria) === filtroCategoria;
-        const favorecidoOk = filtroFavorecido === 'todos' || t.favorecido_nome === filtroFavorecido || t.cliente_nome === filtroFavorecido;
+        const favorecidoOk = filtroFavorecido === 'todos' || t.pessoa_nome === filtroFavorecido;
         // LOG de cada filtro aplicado
         if (!dentroPeriodo) console.log('Fora do período:', t);
         if (!statusOk) console.log('Status não bate:', t);
@@ -114,7 +121,7 @@ export default function FinancialDashboard() {
       // LOG para depuração:
       console.log('Despesas filtradas:', filtrados.filter(t => t.tipo === 'despesa'));
       setCategorias(Array.from(new Set(data.map((t: any) => t.categoria_nome || t.categoria).filter(Boolean))) as string[]);
-      setFavorecidos(Array.from(new Set(data.map((t: any) => t.favorecido_nome || t.cliente_nome).filter(Boolean))) as string[]);
+      setFavorecidos(Array.from(new Set(data.map((t: any) => t.pessoa_nome).filter(Boolean))) as string[]);
       // Dados para comparação de período
       if (periodoComparar) {
         const comparar = data.filter((t: any) => {
@@ -241,7 +248,7 @@ export default function FinancialDashboard() {
         t.data_vencimento || t.data,
         t.tipo,
         t.categoria_nome || t.categoria,
-        t.favorecido_nome || t.cliente_nome,
+        t.pessoa_nome,
         t.valor,
         t.status
       ])
@@ -489,54 +496,82 @@ export default function FinancialDashboard() {
         </div>
       )}
       <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
-        <h2 className="text-lg font-semibold mb-4">Evolução Financeira</h2>
-        {getEvolucao(dadosFiltrados).receitas.every(v => v === 0 && getEvolucao(dadosFiltrados).despesas.every(d => d === 0)) ? (
-          <div className="text-center text-gray-400 py-8">Sem dados financeiros para o período selecionado.</div>
-        ) : (
-          <Line
-            data={{
-              labels: getEvolucao(dadosFiltrados).labels,
-              datasets: [
-                {
-                  label: 'Receitas',
-                  data: getEvolucao(dadosFiltrados).receitas,
-                  borderColor: '#10b981',
-                  backgroundColor: 'rgba(16,185,129,0.2)',
-                  tension: 0.3,
+        {/* Gráfico de Evolução Financeira removido conforme solicitado */}
+      </div>
+      {/* Gráfico de Evolução Financeira Anual - Todos os meses do ano, todas as receitas e despesas */}
+      <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
+        <h2 className="text-lg font-semibold mb-4">Evolução Financeira (Ano Completo)</h2>
+        <Bar
+          data={{
+            labels: getEvolucao(dadosTodos).labels,
+            datasets: [
+              {
+                type: 'bar',
+                label: 'Receitas',
+                data: getEvolucao(dadosTodos).receitas,
+                backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                borderRadius: 4,
+                barPercentage: 0.5,
+                categoryPercentage: 0.5,
+              },
+              {
+                type: 'bar',
+                label: 'Despesas',
+                data: getEvolucao(dadosTodos).despesas,
+                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                borderRadius: 4,
+                barPercentage: 0.5,
+                categoryPercentage: 0.5,
+              },
+              {
+                type: 'line',
+                label: 'Saldo',
+                data: getEvolucao(dadosTodos).saldo,
+                borderColor: 'rgba(59, 130, 246, 0.7)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 2,
+                tension: 0.3,
+                pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                pointRadius: 3,
+                datalabels: {
+                  display: false,
                 },
-                {
-                  label: 'Despesas',
-                  data: getEvolucao(dadosFiltrados).despesas,
-                  borderColor: '#ef4444',
-                  backgroundColor: 'rgba(239,68,68,0.2)',
-                  tension: 0.3,
-                },
-                {
-                  label: 'Saldo',
-                  data: getEvolucao(dadosFiltrados).saldo,
-                  borderColor: '#3b82f6',
-                  backgroundColor: 'rgba(59,130,246,0.2)',
-                  tension: 0.3,
-                },
-              ],
-            }}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: { position: 'top' as const },
-                tooltip: {
-                  callbacks: {
-                    label: (ctx: any) => `${ctx.dataset.label}: R$ ${ctx.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+              },
+            ],
+          }}
+          options={{
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' as const },
+              title: { display: false },
+              datalabels: {
+                display: (ctx: any) => ctx.dataset.type === 'bar',
+                anchor: 'end',
+                align: 'top',
+                color: (ctx: any) => ctx.dataset.label === 'Receitas' ? '#10b981' : '#ef4444',
+                font: { weight: 'bold' },
+                formatter: (value: number) => value > 0 ? value.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '',
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                  label: (ctx: any) => {
+                    let label = ctx.dataset.label || '';
+                    if (label) label += ': ';
+                    if (ctx.parsed.y !== undefined) label += `R$ ${ctx.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+                    return label;
                   }
                 }
-              },
-              scales: {
-                y: { beginAtZero: true },
-              },
-            }}
-            height={80}
-          />
-        )}
+              }
+            },
+            scales: {
+              y: { beginAtZero: true },
+            },
+          }}
+          height={80}
+          plugins={[ChartDataLabels]}
+        />
       </div>
     </div>
   );

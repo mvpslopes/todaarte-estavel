@@ -37,6 +37,11 @@ interface Fornecedor {
   nome: string;
 }
 
+interface Cliente {
+  id: number;
+  nome: string;
+}
+
 const API_TRANSACOES = '/api/transacoes-financeiras';
 const API_CATEGORIAS = '/api/categorias-financeiras';
 
@@ -69,7 +74,7 @@ export function FinancialTransactions() {
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState<string | null>(null);
 
-  const [clientes, setClientes] = useState<User[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cliLoading, setCliLoading] = useState(false);
   const [cliError, setCliError] = useState<string | null>(null);
 
@@ -210,15 +215,15 @@ export function FinancialTransactions() {
   // Buscar clientes ao carregar
   useEffect(() => {
     setCliLoading(true);
-    fetch('/api/usuarios-lista')
+    fetch('/api/clientes')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setClientes(data.filter((u: any) => u.role === 'client'));
+          setClientes(data);
           setCliError(null);
         } else {
           setClientes([]);
-          setCliError(data?.error || 'Erro ao buscar clientes.');
+          setCliError('Erro ao buscar clientes.');
         }
       })
       .catch(() => setCliError('Erro ao buscar clientes.'))
@@ -383,7 +388,7 @@ export function FinancialTransactions() {
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.data_vencimento ? new Date(tx.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.categoria_nome}</td>
                   <td className="px-4 py-2 text-sm text-gray-700 align-middle break-words">
-                    {tx.pessoa_nome}
+                    {clientes.find(cli => String(cli.id) === String(tx.pessoa))?.nome || '-'}
                     <span
                       className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold inline-flex items-center
                         ${tx.pessoa_tipo === 'fornecedor'
@@ -502,21 +507,18 @@ export function FinancialTransactions() {
                 {catError && <span className="text-xs text-red-500 ml-2">{catError}</span>}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="font-semibold text-gray-800 tracking-wide">{tipo === 'despesa' ? 'Fornecedor' : 'Cliente'}</label>
+                <label className="font-semibold text-gray-800 tracking-wide">Cliente</label>
                 <select
                   value={clienteId}
                   onChange={e => setClienteId(e.target.value)}
                   className="input input-bordered w-full border-gray-300 shadow-sm focus:border-logo focus:ring-2 focus:ring-logo-light transition-all"
                   required
-                  disabled={tipo === 'despesa' ? fornLoading : cliLoading}
                 >
-                  <option value="">{tipo === 'despesa' ? 'Selecione o fornecedor' : 'Selecione o cliente'}</option>
-                  {tipo === 'despesa'
-                    ? fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)
-                    : clientes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">Selecione o cliente</option>
+                  {clientes.map(cli => (
+                    <option key={cli.id} value={cli.id}>{cli.nome}</option>
+                  ))}
                 </select>
-                {(tipo === 'despesa' ? fornLoading : cliLoading) && <span className="text-xs text-gray-400 ml-2">Carregando...</span>}
-                {(tipo === 'despesa' ? fornError : cliError) && <span className="text-xs text-red-500 ml-2">{tipo === 'despesa' ? fornError : cliError}</span>}
               </div>
               <div className="md:col-span-2 flex flex-col gap-2">
                 <label className="font-semibold text-gray-800 tracking-wide">Descrição (opcional)</label>

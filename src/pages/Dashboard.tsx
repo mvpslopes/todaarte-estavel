@@ -14,9 +14,15 @@ import Suppliers from '../components/dashboard/admin/Suppliers';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Chat from '../components/dashboard/Chat';
 import FinancialDashboard from '../components/dashboard/admin/FinancialDashboard';
+import FinancialReceipts from '../components/dashboard/admin/FinancialReceipts';
+import Agenda from '../components/dashboard/admin/Agenda';
+import Clientes from '../components/dashboard/admin/Clientes';
 
 export function Dashboard() {
   const { user } = useAuth();
+  console.log('Usuário no Dashboard:', user);
+
+  if (!user) return <div>Carregando usuário...</div>;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -33,12 +39,15 @@ export function Dashboard() {
             <Route path="financials-dashboard" element={<FinancialDashboard />} />
             <Route path="financials-categories" element={<FinancialCategories />} />
             <Route path="financial-transactions" element={<FinancialTransactions />} />
+            <Route path="financial-accounts" element={<FixedAccounts />} />
+            <Route path="financial-receipts" element={<FinancialReceipts />} />
+            <Route path="agenda" element={<Agenda />} />
             <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>} />
             <Route path="audit-logs" element={<AuditLogs />} />
             <Route path="users" element={<UserManagement />} />
-            <Route path="financial-accounts" element={<FixedAccounts />} />
             <Route path="fornecedores" element={<Suppliers />} />
             <Route path="messages" element={user ? <Chat usuarioId={Number(user.id)} /> : null} />
+            <Route path="clientes" element={<Clientes />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </>}
           {/* Rotas para cliente */}

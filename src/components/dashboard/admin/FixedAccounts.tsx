@@ -27,6 +27,10 @@ interface Fornecedor {
   id: number;
   nome: string;
 }
+interface Cliente {
+  id: number;
+  nome: string;
+}
 
 const API = '/api/contas-fixas';
 const API_CATEGORIAS = '/api/categorias-financeiras';
@@ -37,6 +41,9 @@ export default function FixedAccounts() {
   const [categorias, setCategorias] = useState<CategoriaFinanceira[]>([]);
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [cliLoading, setCliLoading] = useState(false);
+  const [cliError, setCliError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
@@ -82,6 +89,24 @@ export default function FixedAccounts() {
       .then(res => res.json())
       .then(data => setFornecedores(data));
     return undefined;
+  }, []);
+
+  // Buscar clientes ao carregar
+  useEffect(() => {
+    setCliLoading(true);
+    fetch('/api/clientes')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setClientes(data);
+          setCliError(null);
+        } else {
+          setClientes([]);
+          setCliError('Erro ao buscar clientes.');
+        }
+      })
+      .catch(() => setCliError('Erro ao buscar clientes.'))
+      .finally(() => setCliLoading(false));
   }, []);
 
   // Filtrar contas
@@ -240,6 +265,7 @@ export default function FixedAccounts() {
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Início</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fim</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
             </tr>
           </thead>
@@ -269,6 +295,11 @@ export default function FixedAccounts() {
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{conta.data_inicio ? new Date(conta.data_inicio).toLocaleDateString('pt-BR') : '-'}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{conta.data_fim ? new Date(conta.data_fim).toLocaleDateString('pt-BR') : '-'}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                  {conta.tipo === 'receita'
+                    ? clientes.find(cli => String(cli.id) === String(conta.pessoa))?.nome || '-'
+                    : fornecedores.find(f => String(f.id) === String(conta.pessoa))?.nome || '-'}
+                </td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                   <button className="text-blue-600 hover:text-blue-800 hover:underline mr-3 font-medium" onClick={() => openModal(conta)}>Editar</button>
                   <button className="text-red-600 hover:text-red-800 hover:underline font-medium" onClick={() => handleDelete(conta.id)}>Excluir</button>
@@ -322,12 +353,25 @@ export default function FixedAccounts() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Cliente/Fornecedor</label>
-                  <select name="pessoa" value={form.pessoa} onChange={handleChange} className="input input-bordered w-full bg-gray-50 focus:bg-white focus:ring-2 focus:ring-logo/30 shadow-sm">
-                    <option value="">{form.tipo === 'despesa' ? 'Selecione o fornecedor' : 'Selecione o cliente'}</option>
-                    {form.tipo === 'despesa'
-                      ? fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)
-                      : usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  {form.tipo === 'receita' ? (
+                    <select
+                      name="pessoa"
+                      value={form.pessoa}
+                      onChange={handleChange}
+                      className="input input-bordered w-full"
+                      required
+                    >
+                      <option value="">Selecione o cliente</option>
+                      {clientes.map(cli => (
+                        <option key={cli.id} value={cli.id}>{cli.nome}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select name="pessoa" value={form.pessoa} onChange={handleChange} className="input input-bordered w-full bg-gray-50 focus:bg-white focus:ring-2 focus:ring-logo/30 shadow-sm">
+                      <option value="">Selecione o fornecedor</option>
+                      {fornecedores.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Dia de Vencimento *</label>
