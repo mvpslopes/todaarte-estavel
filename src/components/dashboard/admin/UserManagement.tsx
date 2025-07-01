@@ -224,7 +224,7 @@ export function UserManagement() {
         />
         <button
           type="submit"
-          className="btn bg-gradient-to-r from-logo to-logo-light text-white text-lg font-semibold mt-2 shadow-md rounded-lg hover:from-logo-dark hover:to-logo-light transition-all"
+          className="w-full bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white px-6 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50"
         >
           {loading ? 'Cadastrando...' : 'Cadastrar Usuário'}
         </button>
@@ -233,12 +233,12 @@ export function UserManagement() {
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 max-w-4xl w-full mx-auto mt-6">
         <table className="w-full divide-y divide-gray-200">
           <thead>
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Empresa</th>
-              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
+            <tr className="bg-white text-[#8a6a3b] border-b-2 border-[#b9936c] rounded-t-xl">
+              <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">NOME</th>
+              <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">E-MAIL</th>
+              <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">TIPO</th>
+              <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">EMPRESA</th>
+              <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">AÇÕES</th>
             </tr>
           </thead>
           <tbody>

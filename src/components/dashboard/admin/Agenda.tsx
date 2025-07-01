@@ -4,7 +4,7 @@ import { format } from 'date-fns/format';
 import { parse } from 'date-fns/parse';
 import { startOfWeek } from 'date-fns/startOfWeek';
 import { getDay } from 'date-fns/getDay';
-import { ptBR } from 'date-fns/locale/pt-BR';
+import { ptBR } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format as formatDate, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -21,6 +21,11 @@ interface Atividade {
   arquivo: string;
 }
 
+interface Cliente {
+  id: number;
+  nome: string;
+}
+
 const statusOptions = ['Pendente', 'Em Andamento', 'Em Aprovação', 'Aprovado'];
 
 const locales = {
@@ -29,7 +34,7 @@ const locales = {
 const localizer = dateFnsLocalizer({
   format,
   parse,
-  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 0 }),
+  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 0, locale: ptBR }),
   getDay,
   locales,
 });
@@ -66,10 +71,12 @@ export default function Agenda() {
   const [editId, setEditId] = useState<number | null>(null);
   const [statusMenuId, setStatusMenuId] = useState<number | null>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
 
   useEffect(() => {
     fetchAtividades();
     fetchAdmins();
+    fetchClientes();
   }, []);
 
   // Fecha o menu de status ao clicar fora
@@ -106,6 +113,16 @@ export default function Agenda() {
       setAdmins(data);
     } catch {
       setAdmins([]);
+    }
+  }
+
+  async function fetchClientes() {
+    try {
+      const res = await fetch('/api/clientes');
+      const data = await res.json();
+      setClientes(Array.isArray(data) ? data : []);
+    } catch {
+      setClientes([]);
     }
   }
 
@@ -168,13 +185,21 @@ export default function Agenda() {
   }));
 
   async function handleStatusChange(id: number, newStatus: string) {
+    setLoading(true);
+    const atividade = atividades.find(a => a.id === id);
+    if (!atividade) return;
+    const payload = {
+      ...atividade,
+      status: newStatus,
+    };
     await fetch(`/api/atividades/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...atividades.find(a => a.id === id), status: newStatus }),
+      body: JSON.stringify(payload),
     });
     setStatusMenuId(null);
-    fetchAtividades();
+    await fetchAtividades();
+    setLoading(false);
   }
 
   return (
@@ -183,27 +208,23 @@ export default function Agenda() {
         <h1 className="text-3xl font-bold text-black drop-shadow-sm">Agenda de Atividades</h1>
         <div className="flex gap-2 items-center">
           <button
-            className={`px-4 py-2 rounded-xl shadow font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-logo/50 ${
-              view === 'tabela'
-                ? 'bg-gradient-to-r from-logo to-logo-light text-white'
-                : 'bg-white text-logo border border-logo-light hover:bg-logo-light/10'
+            className={`px-4 py-2 rounded-xl shadow font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50 bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white ${
+              view === 'tabela' ? 'brightness-110' : 'opacity-80 hover:brightness-110'
             }`}
-            onClick={() => setView('tabela')}
+            onClick={() => { setView('tabela'); }}
           >
             Tabela
           </button>
           <button
-            className={`px-4 py-2 rounded-xl shadow font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-logo/50 ${
-              view === 'calendario'
-                ? 'bg-gradient-to-r from-logo to-logo-light text-white'
-                : 'bg-white text-logo border border-logo-light hover:bg-logo-light/10'
+            className={`px-4 py-2 rounded-xl shadow font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50 bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white ${
+              view === 'calendario' ? 'brightness-110' : 'opacity-80 hover:brightness-110'
             }`}
-            onClick={() => setView('calendario')}
+            onClick={() => { setView('calendario'); }}
           >
             Calendário
           </button>
           <button
-            className="flex items-center gap-2 bg-gradient-to-r from-[#b9936c] to-[#e6d3c6] text-white px-6 py-2 rounded-2xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50 text-lg"
+            className="flex items-center gap-2 bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white px-6 py-2 rounded-2xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50 text-lg"
             onClick={() => setShowForm(true)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -233,7 +254,12 @@ export default function Agenda() {
           </div>
           <div className="flex flex-col">
             <label className="text-sm font-medium text-gray-700 mb-1">Cliente</label>
-            <input name="cliente" value={form.cliente} onChange={handleChange} placeholder="Cliente" className="p-2 border rounded focus:outline-none focus:ring focus:border-blue-400" required />
+            <select name="cliente" value={form.cliente} onChange={handleChange} className="p-2 border rounded focus:outline-none focus:ring focus:border-blue-400" required>
+              <option value="">Selecione o cliente</option>
+              {clientes.map(cli => (
+                <option key={cli.id} value={cli.nome}>{cli.nome}</option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col">
             <label className="text-sm font-medium text-gray-700 mb-1">Data do Pedido</label>
@@ -258,17 +284,18 @@ export default function Agenda() {
             <input name="arquivo" value={form.arquivo} onChange={handleChange} placeholder="Link do Google Drive" className="p-2 border rounded focus:outline-none focus:ring focus:border-blue-400" />
           </div>
           <div className="flex gap-2 mt-4">
-            <button type="submit" className="bg-gradient-to-r from-logo to-logo-light text-white px-5 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-logo/50">{editId ? 'Salvar Alterações' : 'Salvar'}</button>
-            <button type="button" className="px-5 py-2 rounded-xl border border-logo-light bg-white text-logo hover:bg-logo-light/10" onClick={() => setShowForm(false)}>Cancelar</button>
+            <button type="submit" className="bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white px-5 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50">{editId ? 'Salvar Alterações' : 'Salvar'}</button>
+            <button type="button" className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white hover:brightness-110 border-none" onClick={() => setShowForm(false)}>Cancelar</button>
           </div>
         </form>
       )}
       {view === 'tabela' && (
         <div className="overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
-          <table className="min-w-full text-base text-gray-800">
+          <table className="min-w-fit text-base text-gray-800 w-full">
             <thead>
-              <tr className="bg-white border-b border-gray-100">
+              <tr className="bg-white text-[#8a6a3b] border-b-2 border-[#b9936c] rounded-t-xl">
                 <th className="px-4 py-3 font-semibold text-left">Atividade</th>
+                <th className="px-4 py-3 font-semibold text-left">Responsável</th>
                 <th className="px-4 py-3 font-semibold text-left">Cliente</th>
                 <th className="px-4 py-3 font-semibold text-left">Data do Pedido</th>
                 <th className="px-4 py-3 font-semibold text-left">Data da Realização</th>
@@ -281,55 +308,41 @@ export default function Agenda() {
             <tbody>
               {atividades.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50 transition-all group">
-                  <td className="px-4 py-3 whitespace-nowrap flex items-center gap-2 font-medium">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-logo mr-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25M3 18.75A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75M3 18.75V17.25M21 18.75V17.25M9.75 10.5h4.5" />
-                      </svg>
-                    </span>
-                    <span className="truncate max-w-[220px]" title={a.atividade}>{a.atividade}</span>
+                  <td className="px-4 py-3 whitespace-normal break-words max-w-[220px]" title={a.atividade}>{a.atividade}</td>
+                  <td className="px-4 py-3 whitespace-normal break-words max-w-[160px]" title={a.responsavel}>{a.responsavel}</td>
+                  <td className="px-4 py-3 whitespace-normal break-words max-w-[160px]" title={a.cliente}>{a.cliente}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <div>{a.data_pedido ? formatDate(toZonedTime(parseISO(a.data_pedido), timeZone), 'dd/MM/yyyy') : '-'}</div>
+                    <div className="text-xs text-gray-500">{a.data_pedido ? formatDate(toZonedTime(parseISO(a.data_pedido), timeZone), 'HH:mm') : ''}</div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate" title={a.cliente}>{a.cliente}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{a.data_pedido ? formatDate(toZonedTime(parseISO(a.data_pedido), timeZone), 'dd/MM/yyyy HH:mm') : '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{a.data_realizacao ? formatDate(toZonedTime(parseISO(a.data_realizacao), timeZone), 'dd/MM/yyyy HH:mm') : '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{a.data_entrega ? formatDate(toZonedTime(parseISO(a.data_entrega), timeZone), 'dd/MM/yyyy HH:mm') : '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap relative">
-                    <button
-                      type="button"
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <div>{a.data_realizacao ? formatDate(toZonedTime(parseISO(a.data_realizacao), timeZone), 'dd/MM/yyyy') : '-'}</div>
+                    <div className="text-xs text-gray-500">{a.data_realizacao ? formatDate(toZonedTime(parseISO(a.data_realizacao), timeZone), 'HH:mm') : ''}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <div>{a.data_entrega ? formatDate(toZonedTime(parseISO(a.data_entrega), timeZone), 'dd/MM/yyyy') : '-'}</div>
+                    <div className="text-xs text-gray-500">{a.data_entrega ? formatDate(toZonedTime(parseISO(a.data_entrega), timeZone), 'HH:mm') : ''}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <span
                       className={
-                        `inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-logo/30 ` +
+                        `inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold gap-2 ` +
                         (a.status === 'Pendente' ? 'bg-red-100 text-red-700 ' : '') +
                         (a.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800 ' : '') +
                         (a.status === 'Em Aprovação' ? 'bg-blue-100 text-blue-800 ' : '') +
                         (a.status === 'Aprovado' ? 'bg-green-100 text-green-700 ' : '')
                       }
-                      onClick={() => setStatusMenuId(a.id)}
                     >
-                      <span className={
-                        'w-2 h-2 rounded-full inline-block mr-1 ' +
-                        (a.status === 'Pendente' ? 'bg-red-500 ' : '') +
-                        (a.status === 'Em Andamento' ? 'bg-yellow-400 ' : '') +
-                        (a.status === 'Em Aprovação' ? 'bg-blue-500 ' : '') +
-                        (a.status === 'Aprovado' ? 'bg-green-500 ' : '')
-                      }></span>
                       {a.status}
-                    </button>
-                    {statusMenuId === a.id && (
-                      <div ref={statusMenuRef} className="absolute z-20 left-0 mt-2 bg-white border border-gray-200 rounded shadow-lg min-w-[140px]">
-                        {statusOptions.map(opt => (
-                          <button
-                            key={opt}
-                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${opt === a.status ? 'font-bold text-logo' : ''}`}
-                            onClick={() => handleStatusChange(a.id, opt)}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {a.arquivo ? <a href={a.arquivo} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Arquivo</a> : <span className="text-gray-300">-</span>}
+                  <td className="px-4 py-3 whitespace-nowrap text-center">
+                    {a.arquivo ? (
+                      <a href={a.arquivo} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center justify-center gap-1" title="Abrir arquivo">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 002.828 2.828L18 9.828M7 7h.01" /></svg>
+                        Arquivo
+                      </a>
+                    ) : <span className="text-gray-300">-</span>}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-right">
                     <button className="text-gray-400 hover:text-logo p-1" title="Editar" onClick={() => handleEdit(a)}>
@@ -356,6 +369,7 @@ export default function Agenda() {
         <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
           <BigCalendar
             localizer={localizer}
+            culture="pt-BR"
             events={eventos}
             startAccessor="start"
             endAccessor="end"
@@ -371,16 +385,26 @@ export default function Agenda() {
               date: 'Data',
               time: 'Hora',
               event: 'Atividade',
-              noEventsInRange: 'Nenhuma atividade neste período.'
+              noEventsInRange: 'Nenhuma atividade neste período.',
+              showMore: (total: number) => `+${total} mais`,
+              allDay: 'Dia todo',
+              work_week: 'Dias úteis',
+              weekdays: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+              months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
             }}
             eventPropGetter={(event: any) => {
               let bg = '#2563eb'; // azul padrão
-              if (event.resource.status === 'Pendente') bg = '#facc15'; // amarelo
-              if (event.resource.status === 'Em Andamento') bg = '#2563eb'; // azul
-              if (event.resource.status === 'Concluída') bg = '#22c55e'; // verde
-              if (event.resource.status === 'Cancelada') bg = '#ef4444'; // vermelho
+              if (event.resource && event.resource.status === 'Pendente') bg = '#facc15'; // amarelo
+              if (event.resource && event.resource.status === 'Em Andamento') bg = '#38bdf8'; // azul claro
+              if (event.resource && event.resource.status === 'Em Aprovação') bg = '#f472b6'; // rosa
+              if (event.resource && event.resource.status === 'Aprovado') bg = '#22c55e'; // verde
               return {
-                style: { backgroundColor: bg, color: 'white', borderRadius: 6, border: 0 }
+                style: {
+                  backgroundColor: bg,
+                  borderRadius: '8px',
+                  color: '#fff',
+                  border: 'none',
+                },
               };
             }}
             onSelectEvent={event => setSelected(event.resource)}

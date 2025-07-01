@@ -92,7 +92,7 @@ export default function Clientes() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-black drop-shadow-sm">Clientes</h1>
-        <button className="bg-gradient-to-r from-logo to-logo-light text-white px-6 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-logo/50" onClick={() => { setShowForm(true); setEditId(null); setForm({ nome: '', email: '', telefone: '', empresa: '', observacoes: '', cpf_cnpj: '' }); }}>
+        <button className="bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white px-6 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50" onClick={() => { setShowForm(true); setEditId(null); setForm({ nome: '', email: '', telefone: '', empresa: '', observacoes: '', cpf_cnpj: '' }); }}>
           Novo Cliente
         </button>
       </div>
@@ -134,7 +134,7 @@ export default function Clientes() {
       <div className="overflow-x-auto bg-white rounded-xl shadow border border-logo-light/30">
         <table className="min-w-full text-sm text-gray-800">
           <thead>
-            <tr className="bg-gradient-to-r from-logo to-logo-light text-white rounded-t-xl">
+            <tr className="bg-white text-[#8a6a3b] border-b-2 border-[#b9936c] rounded-t-xl">
               <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">Nome</th>
               <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">Email</th>
               <th className="px-4 py-3 border-b font-semibold whitespace-nowrap">Telefone</th>

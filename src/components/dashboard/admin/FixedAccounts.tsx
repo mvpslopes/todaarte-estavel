@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from 'react';
 
-interface CategoriaFinanceira {
-  id: number;
-  nome: string;
-  tipo: 'receita' | 'despesa';
-}
 interface User {
   id: number;
   name: string;
@@ -256,7 +251,7 @@ export default function FixedAccounts() {
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
-            <tr>
+            <tr className="bg-white text-[#8a6a3b] border-b-2 border-[#b9936c] rounded-t-xl">
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>

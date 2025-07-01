@@ -325,7 +325,7 @@ export default function FinancialDashboard() {
             </button>
           </div>
         </div>
-        <button onClick={exportarCSV} className="bg-blue-600 text-white px-4 py-2 rounded shadow">Exportar CSV</button>
+        <button onClick={exportarCSV} className="bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white px-4 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50">Exportar CSV</button>
       </div>
       {loading || !resumo ? (
         <div className="text-center text-gray-500 py-8">Carregando resumo financeiro...</div>
