@@ -143,16 +143,16 @@ export default function Suppliers() {
         )}
       </div>
       {loading && <div className="mb-4 text-gray-500">Carregando...</div>}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 overflow-x-auto">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase max-w-xs break-words">Nome</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Documento</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cidade</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase max-w-xs break-words">Documento</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase max-w-xs break-words">Email</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase max-w-xs break-words">Telefone</th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase max-w-xs break-words">Cidade</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
             </tr>
           </thead>
@@ -161,15 +161,32 @@ export default function Suppliers() {
               <tr><td colSpan={7} className="text-center text-gray-400 py-8">Nenhum fornecedor cadastrado.</td></tr>
             ) : fornecedores.map(f => (
               <tr key={f.id} className="border-b last:border-b-0 hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">{f.nome}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{f.tipo === 'pf' ? 'Pessoa Física' : 'Pessoa Jurídica'}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{f.documento || '-'}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{f.email || '-'}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{f.telefone || '-'}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{f.cidade || '-'}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                  <button className="text-blue-600 hover:text-blue-800 hover:underline mr-3 font-medium" onClick={() => openModal(f)}>Editar</button>
-                  <button className="text-red-600 hover:text-red-800 hover:underline font-medium" onClick={() => handleDelete(f.id)}>Excluir</button>
+                <td className="px-4 py-2 text-sm text-gray-700 font-medium max-w-xs break-words">{f.nome}</td>
+                <td className="px-4 py-2 text-sm text-gray-700">{f.tipo === 'pf' ? 'Pessoa Física' : 'Pessoa Jurídica'}</td>
+                <td className="px-4 py-2 text-sm text-gray-700 max-w-xs break-words">{f.documento || '-'}</td>
+                <td className="px-4 py-2 text-sm text-gray-700 max-w-xs break-words">{f.email || '-'}</td>
+                <td className="px-4 py-2 text-sm text-gray-700 max-w-xs break-words">{f.telefone || '-'}</td>
+                <td className="px-4 py-2 text-sm text-gray-700 max-w-xs break-words">{f.cidade || '-'}</td>
+                <td className="px-4 py-2 text-sm text-gray-700 flex gap-2">
+                  <button
+                    className="rounded-full p-1.5 bg-white border border-gray-200 shadow-sm hover:bg-blue-50 transition-colors flex items-center justify-center w-7 h-7"
+                    title="Editar"
+                    onClick={() => openModal(f)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path d="M4 21h4.586a1 1 0 0 0 .707-.293l10.414-10.414a2 2 0 0 0 0-2.828l-2.172-2.172a2 2 0 0 0-2.828 0L4.293 15.707A1 1 0 0 0 4 16.414V21z" />
+                      <path d="M15 6l3 3" />
+                    </svg>
+                  </button>
+                  <button
+                    className="rounded-full p-1.5 bg-white border border-gray-200 shadow-sm hover:bg-red-50 transition-colors flex items-center justify-center w-7 h-7"
+                    title="Excluir"
+                    onClick={() => handleDelete(f.id)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </td>
               </tr>
             ))}

@@ -34,7 +34,7 @@ export default function FinancialDashboard() {
   const [loading, setLoading] = useState(true);
   const [dadosGrafico, setDadosGrafico] = useState<any>(null);
   const [dadosRosace, setDadosRosace] = useState<any>(null);
-  const [filtroPeriodo, setFiltroPeriodo] = useState<'mes' | 'ano' | 'personalizado'>('mes');
+  const [filtroPeriodo, setFiltroPeriodo] = useState<'mes' | 'ano' | 'personalizado' | 'todos'>('mes');
   const [periodo, setPeriodo] = useState<{inicio: string, fim: string}>(() => {
     const hoje = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -47,7 +47,12 @@ export default function FinancialDashboard() {
   const [dadosFiltrados, setDadosFiltrados] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
   const [favorecidos, setFavorecidos] = useState<string[]>([]);
-  const [periodoComparar, setPeriodoComparar] = useState<{inicio: string, fim: string} | null>(null);
+  const [periodoComparar, setPeriodoComparar] = useState<{inicio: string, fim: string} | null>(() => {
+    const hoje = new Date();
+    const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    return { inicio: inicio.toISOString().slice(0,10), fim: fim.toISOString().slice(0,10) };
+  });
   const [dadosComparar, setDadosComparar] = useState<any[]>([]);
   const [dadosTodos, setDadosTodos] = useState<any[]>([]);
 
@@ -142,8 +147,15 @@ export default function FinancialDashboard() {
 
   // Função para agrupar receitas e despesas por mês
   function getReceitasDespesasPorMes(data: any[]) {
+    // Filtrar apenas pagos ou vencidos
+    const hoje = new Date();
+    const filtrados = data.filter((t: any) => {
+      if (t.status === 'pago') return true;
+      const dataVenc = t.data_vencimento ? new Date(t.data_vencimento) : (t.data ? new Date(t.data) : null);
+      return dataVenc && dataVenc <= hoje;
+    });
     const meses: { [key: string]: { receitas: number; despesas: number } } = {};
-    data.forEach((t: any) => {
+    filtrados.forEach((t: any) => {
       const mes = new Date(t.data_vencimento || t.data).toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
       if (!meses[mes]) meses[mes] = { receitas: 0, despesas: 0 };
       if (t.tipo === 'receita') meses[mes].receitas += Number(t.valor || 0);
@@ -258,31 +270,155 @@ export default function FinancialDashboard() {
     saveAs(blob, 'transacoes_financeiras.csv');
   }
 
+  // --- NOVO RESUMO DO PERÍODO ---
+  // Resumo do período filtrado
+  const receitasPeriodo = dadosFiltrados.filter((t: any) => t.tipo === 'receita');
+  const despesasPeriodo = dadosFiltrados.filter((t: any) => t.tipo === 'despesa');
+  const receitasPagasPeriodo = receitasPeriodo.filter((t: any) => t.status === 'pago');
+  const despesasPagasPeriodo = despesasPeriodo.filter((t: any) => t.status === 'pago');
+  const receitasPendentesPeriodo = receitasPeriodo.filter((t: any) => t.status !== 'pago');
+  const despesasPendentesPeriodo = despesasPeriodo.filter((t: any) => t.status !== 'pago');
+  const totalReceitasPeriodo = receitasPeriodo.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const totalDespesasPeriodo = despesasPeriodo.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const totalReceitasPagasPeriodo = receitasPagasPeriodo.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const totalDespesasPagasPeriodo = despesasPagasPeriodo.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const totalReceitasPendentesPeriodo = receitasPendentesPeriodo.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const totalDespesasPendentesPeriodo = despesasPendentesPeriodo.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const saldoPeriodo = totalReceitasPeriodo - totalDespesasPeriodo;
+  const saldoRealizadoPeriodo = totalReceitasPagasPeriodo - totalDespesasPagasPeriodo;
+
+  // --- RESUMO GERAL (ACUMULADO) ---
+  const receitasGeral = dadosTodos.filter((t: any) => t.tipo === 'receita');
+  const despesasGeral = dadosTodos.filter((t: any) => t.tipo === 'despesa');
+  const totalReceitasGeral = receitasGeral.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const totalDespesasGeral = despesasGeral.reduce((sum: number, t: any) => sum + Number(t.valor || 0), 0);
+  const saldoGeral = totalReceitasGeral - totalDespesasGeral;
+
+  // --- CARDS DE RESUMO ---
+  // Cards do período
+  const cardsPeriodo = [
+    {
+      label: 'Saldo do Período',
+      value: saldoPeriodo,
+      color: saldoPeriodo >= 0 ? 'text-green-600' : 'text-red-600',
+      bg: saldoPeriodo >= 0 ? 'bg-green-50' : 'bg-red-50',
+    },
+    {
+      label: 'Receitas',
+      value: totalReceitasPeriodo,
+      color: 'text-green-700',
+      bg: 'bg-green-100',
+    },
+    {
+      label: 'Despesas',
+      value: totalDespesasPeriodo,
+      color: 'text-red-700',
+      bg: 'bg-red-100',
+    },
+    {
+      label: 'Receitas Pagas',
+      value: totalReceitasPagasPeriodo,
+      color: 'text-green-700',
+      bg: 'bg-green-50',
+    },
+    {
+      label: 'Despesas Pagas',
+      value: totalDespesasPagasPeriodo,
+      color: 'text-red-700',
+      bg: 'bg-red-50',
+    },
+    {
+      label: 'Receitas Pendentes',
+      value: totalReceitasPendentesPeriodo,
+      color: 'text-yellow-700',
+      bg: 'bg-yellow-50',
+    },
+    {
+      label: 'Despesas Pendentes',
+      value: totalDespesasPendentesPeriodo,
+      color: 'text-yellow-700',
+      bg: 'bg-yellow-50',
+    },
+    {
+      label: 'Saldo Realizado',
+      value: saldoRealizadoPeriodo,
+      color: saldoRealizadoPeriodo >= 0 ? 'text-green-600' : 'text-red-600',
+      bg: saldoRealizadoPeriodo >= 0 ? 'bg-green-50' : 'bg-red-50',
+    },
+  ];
+  // Card do resumo geral
+  const cardGeral = {
+    label: 'Saldo Geral (Histórico)',
+    value: saldoGeral,
+    color: saldoGeral >= 0 ? 'text-green-700' : 'text-red-700',
+    bg: saldoGeral >= 0 ? 'bg-green-100' : 'bg-red-100',
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Dashboard Financeiro</h1>
+      {/* Barra de filtros no topo */}
       <div className="bg-gray-50 rounded-xl p-4 mb-8 flex flex-wrap gap-4 items-end justify-between">
         <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Período</label>
-            <select value={filtroPeriodo} onChange={e => setFiltroPeriodo(e.target.value as any)} className="border rounded px-2 py-1">
-              <option value="mes">Mês atual</option>
-              <option value="ano">Ano atual</option>
-              <option value="personalizado">Personalizado</option>
-            </select>
+          <div className="flex items-end gap-2">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Período</label>
+              <select value={filtroPeriodo} onChange={e => {
+                setFiltroPeriodo(e.target.value as any);
+                if (e.target.value === 'mes') {
+                  const hoje = new Date();
+                  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+                  setPeriodo({ inicio: inicio.toISOString().slice(0,10), fim: fim.toISOString().slice(0,10) });
+                }
+              }} className="border rounded px-2 py-1">
+                <option value="mes">Mês atual</option>
+                <option value="ano">Ano atual</option>
+                <option value="personalizado">Personalizado</option>
+                <option value="todos">Todos os períodos</option>
+              </select>
+            </div>
+            {filtroPeriodo === 'mes' && (
+              <>
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base font-bold"
+                  title="Mês anterior"
+                  onClick={() => {
+                    const ini = new Date(periodo.inicio);
+                    ini.setMonth(ini.getMonth() - 1);
+                    const firstDay = new Date(ini.getFullYear(), ini.getMonth(), 1);
+                    const lastDay = new Date(ini.getFullYear(), ini.getMonth() + 1, 0);
+                    setPeriodo({ inicio: firstDay.toISOString().slice(0,10), fim: lastDay.toISOString().slice(0,10) });
+                    // Atualiza comparar com período para o mês anterior ao novo mês exibido
+                    const prevIni = new Date(firstDay);
+                    prevIni.setMonth(prevIni.getMonth() - 1);
+                    const prevFirst = new Date(prevIni.getFullYear(), prevIni.getMonth(), 1);
+                    const prevLast = new Date(prevIni.getFullYear(), prevIni.getMonth() + 1, 0);
+                    setPeriodoComparar({ inicio: prevFirst.toISOString().slice(0,10), fim: prevLast.toISOString().slice(0,10) });
+                  }}
+                >{'<'}</button>
+                <button
+                  type="button"
+                  className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base font-bold"
+                  title="Próximo mês"
+                  onClick={() => {
+                    const ini = new Date(periodo.inicio);
+                    ini.setMonth(ini.getMonth() + 1);
+                    const firstDay = new Date(ini.getFullYear(), ini.getMonth(), 1);
+                    const lastDay = new Date(ini.getFullYear(), ini.getMonth() + 1, 0);
+                    setPeriodo({ inicio: firstDay.toISOString().slice(0,10), fim: lastDay.toISOString().slice(0,10) });
+                    // Atualiza comparar com período para o mês seguinte ao novo mês exibido
+                    const nextIni = new Date(firstDay);
+                    nextIni.setMonth(nextIni.getMonth() + 1);
+                    const nextFirst = new Date(nextIni.getFullYear(), nextIni.getMonth(), 1);
+                    const nextLast = new Date(nextIni.getFullYear(), nextIni.getMonth() + 1, 0);
+                    setPeriodoComparar({ inicio: nextFirst.toISOString().slice(0,10), fim: nextLast.toISOString().slice(0,10) });
+                  }}
+                >{'>'}</button>
+              </>
+            )}
           </div>
-          {filtroPeriodo === 'personalizado' && (
-            <>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Início</label>
-                <input type="date" value={periodo.inicio} onChange={e => setPeriodo(p => ({...p, inicio: e.target.value}))} className="border rounded px-2 py-1" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Fim</label>
-                <input type="date" value={periodo.fim} onChange={e => setPeriodo(p => ({...p, fim: e.target.value}))} className="border rounded px-2 py-1" />
-              </div>
-            </>
-          )}
           <div>
             <label className="block text-xs text-gray-500 mb-1">Status</label>
             <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value as any)} className="border rounded px-2 py-1">
@@ -327,27 +463,63 @@ export default function FinancialDashboard() {
         </div>
         <button onClick={exportarCSV} className="bg-gradient-to-r from-[#b9936c] to-[#8a6a3b] text-white px-4 py-2 rounded-xl shadow font-semibold transition-all duration-200 hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-[#b9936c]/50">Exportar CSV</button>
       </div>
+      {/* Cards de resumo do período */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {cardsPeriodo.map((card, i) => (
+          <div key={i} className={`rounded-2xl shadow border ${card.bg} p-4 flex flex-col items-center`}>
+            <span className="text-xs font-semibold text-gray-500 mb-1 text-center">{card.label}</span>
+            <span className={`text-2xl font-bold ${card.color}`}>R$ {Number(card.value).toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+          </div>
+        ))}
+      </div>
+      {/* Card de resumo geral */}
+      <div className="mb-8">
+        <div className={`rounded-2xl shadow border ${cardGeral.bg} p-4 flex flex-col items-center max-w-xs mx-auto`}>
+          <span className="text-xs font-semibold text-gray-500 mb-1 text-center">{cardGeral.label}</span>
+          <span className={`text-2xl font-bold ${cardGeral.color}`}>R$ {Number(cardGeral.value).toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+        </div>
+      </div>
       {loading || !resumo ? (
         <div className="text-center text-gray-500 py-8">Carregando resumo financeiro...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
-            <div className="text-gray-500 text-xs mb-1">Receitas</div>
-            <div className="text-2xl font-bold text-green-700">R$ {resumo.totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <div className="text-xs text-gray-400">Pagas: R$ {resumo.receitasPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Pendentes: R$ {resumo.receitasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        <>
+          {/* Resumo do período filtrado */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
+              <div className="text-gray-500 text-xs mb-1">Receitas (período selecionado)</div>
+              <div className="text-2xl font-bold text-green-700">R$ {totalReceitasPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              <div className="text-xs text-gray-400">Pagas: R$ {totalReceitasPagasPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Pendentes: R$ {totalReceitasPendentesPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
+              <div className="text-gray-500 text-xs mb-1">Despesas (período selecionado)</div>
+              <div className="text-2xl font-bold text-red-700">R$ {totalDespesasPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              <div className="text-xs text-gray-400">Pagas: R$ {totalDespesasPagasPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Pendentes: R$ {totalDespesasPendentesPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
+              <div className="text-gray-500 text-xs mb-1">Saldo (período selecionado)</div>
+              <div className={`text-2xl font-bold ${saldoPeriodo >= 0 ? 'text-green-700' : 'text-red-700'}`}>R$ {saldoPeriodo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
-            <div className="text-gray-500 text-xs mb-1">Despesas</div>
-            <div className="text-2xl font-bold text-red-700">R$ {resumo.totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <div className="text-xs text-gray-400">Pagas: R$ {resumo.despesasPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Pendentes: R$ {resumo.despesasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          {/* Resumo geral */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
+              <div className="text-gray-500 text-xs mb-1">Receitas (geral)</div>
+              <div className="text-2xl font-bold text-green-700">R$ {totalReceitasGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              <div className="text-xs text-gray-400">Pagas: R$ {resumo.receitasPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Pendentes: R$ {resumo.receitasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
+              <div className="text-gray-500 text-xs mb-1">Despesas (geral)</div>
+              <div className="text-2xl font-bold text-red-700">R$ {totalDespesasGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              <div className="text-xs text-gray-400">Pagas: R$ {resumo.despesasPagas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Pendentes: R$ {resumo.despesasPendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
+              <div className="text-gray-500 text-xs mb-1">Saldo (geral)</div>
+              <div className={`text-2xl font-bold ${resumo.saldo >= 0 ? 'text-green-700' : 'text-red-700'}`}>R$ {resumo.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col justify-center">
-            <div className="text-gray-500 text-xs mb-1">Saldo</div>
-            <div className={`text-2xl font-bold ${resumo.saldo >= 0 ? 'text-green-700' : 'text-red-700'}`}>R$ {resumo.saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-          </div>
-        </div>
+        </>
       )}
-      {dadosGrafico && (
+      {dadosGrafico && filtroPeriodo !== 'todos' && (
         <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
           <h2 className="text-lg font-semibold mb-4">Receitas vs Despesas por Mês</h2>
           <Bar
@@ -366,7 +538,7 @@ export default function FinancialDashboard() {
                 },
                 {
                   label: 'Saldo',
-                  data: dadosGrafico.labels.map((_, i) => (dadosGrafico.receitas[i] || 0) - (dadosGrafico.despesas[i] || 0)),
+                  data: dadosGrafico.labels.map((_, i: number) => (dadosGrafico.receitas[i] || 0) - (dadosGrafico.despesas[i] || 0)),
                   backgroundColor: 'rgba(59, 130, 246, 0.7)',
                 },
               ],

@@ -6,7 +6,6 @@ import { ClientDashboard } from '../components/dashboard/client/ClientDashboard'
 import { ClientProjects } from '../components/dashboard/client/ClientProjects';
 import { useAuth } from '../contexts/AuthContext';
 import { FinancialCategories } from '../components/dashboard/admin/FinancialCategories';
-import { AuditLogs } from '../components/dashboard/admin/AuditLogs';
 import { UserManagement } from '../components/dashboard/admin/UserManagement';
 import { FinancialTransactions } from '../components/dashboard/admin/FinancialTransactions';
 import FixedAccounts from '../components/dashboard/admin/FixedAccounts';
@@ -36,14 +35,11 @@ export function Dashboard() {
             <Route path="projects" element={<ProjectManagement />} />
             <Route path="clients" element={<div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Clientes</h1><p>Em desenvolvimento...</p></div>} />
             <Route path="portfolio" element={<div className="p-8"><h1 className="text-2xl font-bold">Gerenciar Portfólio</h1><p>Em desenvolvimento...</p></div>} />
-            <Route path="financials-dashboard" element={<FinancialDashboard />} />
             <Route path="financials-categories" element={<FinancialCategories />} />
             <Route path="financial-transactions" element={<FinancialTransactions />} />
             <Route path="financial-accounts" element={<FixedAccounts />} />
-            <Route path="financial-receipts" element={<FinancialReceipts />} />
             <Route path="agenda" element={<Agenda />} />
             <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>} />
-            <Route path="audit-logs" element={<AuditLogs />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="fornecedores" element={<Suppliers />} />
             <Route path="messages" element={user ? <Chat usuarioId={Number(user.id)} /> : null} />

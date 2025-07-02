@@ -53,11 +53,20 @@ export function FinancialTransactions() {
   const [error, setError] = useState<string | null>(null);
   
   // Filtros
+  const getMonthRange = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return {
+      ini: firstDay.toISOString().slice(0, 10),
+      fim: lastDay.toISOString().slice(0, 10)
+    };
+  };
   const [filterTipo, setFilterTipo] = useState('');
   const [filterCategoria, setFilterCategoria] = useState('');
   const [filterCliente, setFilterCliente] = useState('');
-  const [filterDataIni, setFilterDataIni] = useState('');
-  const [filterDataFim, setFilterDataFim] = useState('');
+  const [filterDataIni, setFilterDataIni] = useState(getMonthRange().ini);
+  const [filterDataFim, setFilterDataFim] = useState(getMonthRange().fim);
 
   // Formulário
   const [tipo, setTipo] = useState<'receita' | 'despesa'>('receita');
@@ -99,7 +108,11 @@ export function FinancialTransactions() {
       
       const res = await fetch(`${API_TRANSACOES}?${params.toString()}`);
       if (!res.ok) throw new Error('Erro ao buscar transações');
-      const data = await res.json();
+      let data = await res.json();
+      // Ordenar do mais antigo para o mais novo
+      data = Array.isArray(data)
+        ? data.sort((a, b) => new Date(a.data_vencimento || a.data || 0).getTime() - new Date(b.data_vencimento || b.data || 0).getTime())
+        : data;
       setTransactions(data);
       console.log('Transações recebidas:', data); // Debug
     } catch (err: any) {
@@ -302,6 +315,18 @@ export function FinancialTransactions() {
     fetchTransactions();
   }
 
+  // Resumo financeiro
+  const totalReceitas = transactions.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+  const totalDespesas = transactions.filter(t => t.tipo === 'despesa').reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+  const saldo = totalReceitas - totalDespesas;
+
+  // Resumo financeiro detalhado
+  const receitasPagas = transactions.filter(t => t.tipo === 'receita' && t.status === 'pago').reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+  const receitasPendentes = transactions.filter(t => t.tipo === 'receita' && t.status !== 'pago').reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+  const despesasPagas = transactions.filter(t => t.tipo === 'despesa' && t.status === 'pago').reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+  const despesasPendentes = transactions.filter(t => t.tipo === 'despesa' && t.status !== 'pago').reduce((acc, t) => acc + (Number(t.valor) || 0), 0);
+  const saldoRealizado = receitasPagas - despesasPagas;
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -341,13 +366,56 @@ export function FinancialTransactions() {
           <label className="block text-xs font-semibold text-gray-500 mb-1">Cliente</label>
           <input value={filterCliente} onChange={e => setFilterCliente(e.target.value)} className="input input-bordered w-full" placeholder="Nome ou referência" />
         </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">Data Inicial</label>
-          <input type="date" value={filterDataIni} onChange={e => setFilterDataIni(e.target.value)} className="input input-bordered w-full" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1">Data Final</label>
-          <input type="date" value={filterDataFim} onChange={e => setFilterDataFim(e.target.value)} className="input input-bordered w-full" />
+        <div className="flex flex-wrap items-end gap-2 max-w-full overflow-x-auto">
+          <div className="flex flex-col">
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Data Inicial</label>
+            <input
+              type="date"
+              value={filterDataIni}
+              onChange={e => setFilterDataIni(e.target.value)}
+              className="input input-bordered w-[110px] min-w-0"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Data Final</label>
+            <input
+              type="date"
+              value={filterDataFim}
+              onChange={e => setFilterDataFim(e.target.value)}
+              className="input input-bordered w-[110px] min-w-0"
+            />
+          </div>
+          <div className="flex items-end gap-1 mb-1">
+            <button
+              type="button"
+              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base font-bold"
+              title="Mês anterior"
+              onClick={() => {
+                const ini = new Date(filterDataIni);
+                ini.setMonth(ini.getMonth() - 1);
+                const firstDay = new Date(ini.getFullYear(), ini.getMonth(), 1);
+                const lastDay = new Date(ini.getFullYear(), ini.getMonth() + 1, 0);
+                setFilterDataIni(firstDay.toISOString().slice(0, 10));
+                setFilterDataFim(lastDay.toISOString().slice(0, 10));
+              }}
+            >
+              {'<'}
+            </button>
+            <button
+              type="button"
+              className="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-base font-bold"
+              title="Próximo mês"
+              onClick={() => {
+                const [ano, mes] = filterDataIni.split('-').map(Number);
+                const firstDay = new Date(ano, mes, 1);
+                const lastDay = new Date(ano, mes + 1, 0);
+                setFilterDataIni(firstDay.toISOString().slice(0, 10));
+                setFilterDataFim(lastDay.toISOString().slice(0, 10));
+              }}
+            >
+              {'>'}
+            </button>
+          </div>
         </div>
         {(filterTipo || filterCategoria || filterCliente || filterDataIni || filterDataFim) && (
           <button
@@ -357,11 +425,32 @@ export function FinancialTransactions() {
         )}
       </div>
       
+      {/* Resumo financeiro */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="flex flex-col items-start bg-white rounded-xl shadow border border-gray-200 px-6 py-3 min-w-[200px]">
+          <span className="text-xs text-gray-500 font-medium">Saldo do mês</span>
+          <span className={`text-2xl font-bold ${saldo < 0 ? 'text-red-600' : 'text-green-700'}`}>R$ {saldo.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+          <span className="text-xs text-gray-500 font-medium mt-2">Saldo realizado</span>
+          <span className={`text-lg font-bold ${saldoRealizado < 0 ? 'text-red-600' : 'text-green-700'}`}>R$ {saldoRealizado.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+        </div>
+        <div className="flex flex-col items-start bg-white rounded-xl shadow border border-gray-200 px-6 py-3 min-w-[200px]">
+          <span className="text-xs text-gray-500 font-medium">Total de receitas</span>
+          <span className="text-2xl font-bold text-green-700">R$ {totalReceitas.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+          <span className="text-xs text-green-700 mt-2">Receitas pagas: <span className="font-bold">R$ {receitasPagas.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span></span>
+          <span className="text-xs text-green-700">Receitas pendentes: <span className="font-bold">R$ {receitasPendentes.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span></span>
+        </div>
+        <div className="flex flex-col items-start bg-white rounded-xl shadow border border-gray-200 px-6 py-3 min-w-[200px]">
+          <span className="text-xs text-gray-500 font-medium">Total de despesas</span>
+          <span className="text-2xl font-bold text-red-600">R$ {totalDespesas.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span>
+          <span className="text-xs text-red-700 mt-2">Despesas pagas: <span className="font-bold">R$ {despesasPagas.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span></span>
+          <span className="text-xs text-red-700">Despesas pendentes: <span className="font-bold">R$ {despesasPendentes.toLocaleString('pt-BR', {minimumFractionDigits:2})}</span></span>
+        </div>
+      </div>
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
         {loading ? (
           <div className="text-center text-gray-500 py-8">Carregando transações...</div>
         ) : (
-          <table className="w-full divide-y divide-gray-200">
+          <table className="w-full divide-y divide-gray-200 table-fixed">
             <thead>
               <tr className="bg-white text-[#8a6a3b] border-b-2 border-[#b9936c] rounded-t-xl">
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
@@ -370,8 +459,8 @@ export function FinancialTransactions() {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Favorecido / Cliente</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                <th className="px-2 py-2 text-xs font-medium text-gray-500 uppercase w-[110px] max-w-[120px] text-center">Status</th>
+                <th className="px-2 py-2 text-xs font-medium text-gray-500 uppercase w-[90px] max-w-[100px] text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -386,7 +475,7 @@ export function FinancialTransactions() {
                     R$ {tx.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.data_vencimento ? new Date(tx.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.categoria_nome}</td>
+                  <td className="px-4 py-2 text-sm text-gray-700 break-words whitespace-pre-line max-w-[160px]">{tx.categoria_nome}</td>
                   <td className="px-4 py-2 text-sm text-gray-700 align-middle break-words">
                     {clientes.find(cli => String(cli.id) === String(tx.pessoa))?.nome || '-'}
                     <span
@@ -400,35 +489,48 @@ export function FinancialTransactions() {
                       {tx.pessoa_tipo === 'fornecedor' ? 'Fornecedor' : 'Cliente'}
                     </span>
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{tx.descricao || '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                    <select
-                      value={tx.status}
-                      onChange={e => handleStatusChange(tx.id, e.target.value)}
-                      className="border rounded px-2 py-1 text-xs bg-white"
-                      style={{ minWidth: 80 }}
-                    >
-                      <option value="pendente">Pendente</option>
-                      <option value="pago">Pago</option>
-                    </select>
-                    {tx.status === 'pago' && (
-                      <span className="ml-2 px-2 py-0.5 rounded-full bg-green-700 text-white text-xs font-bold inline-flex items-center">
-                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                        Pago
-                      </span>
-                    )}
+                  <td className="px-4 py-2 text-sm text-gray-700 break-words whitespace-pre-line max-w-[220px]">{tx.descricao || '-'}</td>
+                  <td className="px-2 py-2 text-center w-[110px] max-w-[120px] overflow-hidden align-middle">
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <select
+                        value={tx.status}
+                        onChange={e => handleStatusChange(tx.id, e.target.value)}
+                        className="w-[80px] min-w-0 max-w-[90px] text-xs px-1 py-1 rounded border border-gray-300 text-center truncate"
+                      >
+                        <option value="pendente">Pendente</option>
+                        <option value="pago">Pago</option>
+                      </select>
+                      {tx.status === 'pago' && (
+                        <span className="px-1 py-0.5 rounded-full bg-green-700 text-white text-[10px] font-bold flex items-center justify-center mt-1 truncate">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                          Pago
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                    <button
-                      className="text-blue-600 hover:underline mr-2"
-                      onClick={() => handleEdit(tx)}
-                      title="Editar"
-                    >Editar</button>
-                    <button
-                      className="text-red-600 hover:underline"
-                      onClick={() => handleDelete(tx.id)}
-                      title="Excluir"
-                    >Excluir</button>
+                  <td className="px-2 py-2 text-center w-[90px] max-w-[100px] overflow-hidden align-middle">
+                    <div className="flex gap-1 justify-center items-center">
+                      <button
+                        className="bg-white border border-gray-300 rounded-full p-1 flex items-center justify-center shadow-sm hover:bg-blue-50 hover:border-blue-400 text-blue-600 hover:text-blue-800 transition-colors min-w-0"
+                        title="Editar"
+                        onClick={() => handleEdit(tx)}
+                        style={{lineHeight:1}}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path d="M17.414 2.586a2 2 0 0 0-2.828 0l-8.5 8.5A2 2 0 0 0 5 12.914V15a1 1 0 0 0 1 1h2.086a2 2 0 0 0 1.414-.586l8.5-8.5a2 2 0 0 0 0-2.828l-2.5-2.5zM6 14v-1.586l8-8L16.586 6l-8 8H6zm2.293-2.293l8-8L17.414 4.586l-8 8L8.293 11.707z" />
+                        </svg>
+                      </button>
+                      <button
+                        className="bg-white border border-gray-300 rounded-full p-1 flex items-center justify-center shadow-sm hover:bg-red-50 hover:border-red-400 text-red-500 hover:text-red-700 transition-colors min-w-0"
+                        title="Excluir"
+                        onClick={() => handleDelete(tx.id)}
+                        style={{lineHeight:1}}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path fillRule="evenodd" d="M6.293 6.293a1 1 0 0 1 1.414 0L10 8.586l2.293-2.293a1 1 0 1 1 1.414 1.414L11.414 10l2.293 2.293a1 1 0 0 1-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 0 1-1.414-1.414L8.586 10 6.293 7.707a1 1 0 0 1 0-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

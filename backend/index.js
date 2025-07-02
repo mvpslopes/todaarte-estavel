@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { registrarLog } from './audit.js';
 import { pool } from './db.js';
 import sqlite3 from 'sqlite3';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -515,7 +516,7 @@ app.post('/api/contas-fixas', async (req, res) => {
           vencimentos.push(data.toISOString().slice(0, 10));
         }
         atual.setMonth(atual.getMonth() + 1);
-        if (!fim && vencimentos.length > 60) break; // segurança: não gerar mais de 5 anos
+        if (!fim && vencimentos.length >= 12) break; // segurança: não gerar mais de 12 meses
       }
       return vencimentos;
     }
@@ -531,9 +532,11 @@ app.post('/api/contas-fixas', async (req, res) => {
       );
     }
     res.status(201).json({ id: result.insertId, descricao, valor, tipo, categoria_id, pessoa, pessoa_tipo, dia_vencimento, status, data_inicio, data_fim });
-  } catch (error) {
-    res.status(500).json({ error: 'Erro ao criar conta fixa', details: error.message });
-  }
+  }    catch (error) {
+     console.log('Entrou no catch de erro!'); // <-- Adicione esta linha
+     console.error('Erro ao criar conta fixa:', error);
+     res.status(500).json({ error: 'Erro ao criar conta fixa', details: error.message });
+   }
 });
 
 app.put('/api/contas-fixas/:id', async (req, res) => {
@@ -712,12 +715,30 @@ app.get('/api/atividades', async (req, res) => {
   }
 });
 
+// Adicionar função utilitária para converter datas para o formato MySQL DATETIME
+function toMySQLDateTime(dt) {
+  if (!dt) return null;
+  return dt.replace('T', ' ') + ':00';
+}
+
 app.post('/api/atividades', async (req, res) => {
+  console.log('REQ.BODY:', req.body); // Log de depuração
   const { responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo } = req.body;
+  const values = [
+    responsavel,
+    atividade,
+    cliente,
+    toMySQLDateTime(data_pedido),
+    toMySQLDateTime(data_realizacao),
+    toMySQLDateTime(data_entrega),
+    status,
+    arquivo
+  ];
+  console.log('VALORES PARA O BANCO:', values); // Log de depuração
   try {
     const [result] = await pool.query(
       'INSERT INTO atividades (responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [responsavel, atividade, cliente, data_pedido, data_realizacao, data_entrega, status, arquivo]
+      values
     );
     res.json({ id: result.insertId });
   } catch (err) {
@@ -824,6 +845,40 @@ app.get('*', (req, res) => {
     return res.status(404).json({ error: 'API endpoint não encontrado.' });
   }
   res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+});
+
+app.post('/api/contato', async (req, res) => {
+  const { name, email, subject, message } = req.body;
+  console.log('Recebido pedido de contato:', { name, email, subject, message });
+
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.todaarte.com.br',
+    port: 587,
+    secure: false,
+    auth: {
+      user: 'contato@todaarte.com.br',
+      pass: '68HTlQX1'
+    }
+  });
+
+  try {
+    console.log('Enviando e-mail via SMTP...');
+    const info = await transporter.sendMail({
+      from: `"${name}" <${email}>`,
+      to: 'contato@todaarte.com.br',
+      subject: subject || 'Mensagem do site',
+      text: message,
+      html: `<p><b>Nome:</b> ${name}</p>
+             <p><b>E-mail:</b> ${email}</p>
+             <p><b>Assunto:</b> ${subject}</p>
+             <p><b>Mensagem:</b><br/>${message}</p>`
+    });
+    console.log('E-mail enviado com sucesso:', info);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao enviar e-mail:', err);
+    res.status(500).json({ error: 'Erro ao enviar e-mail', details: err.message });
+  }
 });
 
 app.listen(port, () => {

@@ -7,12 +7,6 @@ export function Sidebar() {
       <li>
         <Link to="/dashboard/agenda" className="block px-4 py-2 hover:bg-gray-100">Agenda</Link>
       </li>
-      <li>
-        <Link to="/dashboard/financial-transactions" className="block px-4 py-2 hover:bg-gray-100">Transações Financeiras</Link>
-      </li>
-      <li>
-        <Link to="/dashboard/financial-receipts" className="block px-4 py-2 hover:bg-gray-100">Recibos</Link>
-      </li>
       {/* Adicione outros itens do menu conforme necessário */}
     </ul>
   );

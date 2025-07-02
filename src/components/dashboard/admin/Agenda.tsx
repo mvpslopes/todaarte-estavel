@@ -254,12 +254,14 @@ export default function Agenda() {
           </div>
           <div className="flex flex-col">
             <label className="text-sm font-medium text-gray-700 mb-1">Cliente</label>
-            <select name="cliente" value={form.cliente} onChange={handleChange} className="p-2 border rounded focus:outline-none focus:ring focus:border-blue-400" required>
-              <option value="">Selecione o cliente</option>
-              {clientes.map(cli => (
-                <option key={cli.id} value={cli.nome}>{cli.nome}</option>
-              ))}
-            </select>
+            <input
+              name="cliente"
+              value={form.cliente}
+              onChange={handleChange}
+              placeholder="Digite o nome do cliente"
+              className="p-2 border rounded focus:outline-none focus:ring focus:border-blue-400"
+              required
+            />
           </div>
           <div className="flex flex-col">
             <label className="text-sm font-medium text-gray-700 mb-1">Data do Pedido</label>
