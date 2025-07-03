@@ -12,7 +12,7 @@ interface AuthContextType {
     name: string;
     email: string;
     password: string;
-    role: 'admin' | 'client';
+    role: 'admin' | 'client' | 'user';
     company?: string;
   }) => Promise<{ success: boolean; message?: string }>;
   sessionExpiresAt: number | null;
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: string;
     email: string;
     password: string;
-    role: 'admin' | 'client';
+    role: 'admin' | 'client' | 'user';
     company?: string;
   }): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true);

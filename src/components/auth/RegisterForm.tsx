@@ -12,7 +12,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
     name: string;
     email: string;
     password: string;
-    role: 'admin' | 'client';
+    role: 'admin' | 'client' | 'user';
     company: string;
   }>({
     name: '',
@@ -144,6 +144,7 @@ export function RegisterForm({ onClose }: RegisterFormProps) {
               >
                 <option value="client">Cliente</option>
                 <option value="admin">Administrador</option>
+                <option value="user">Usuário</option>
               </select>
             </div>
             {formData.role === 'client' && (

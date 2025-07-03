@@ -214,43 +214,50 @@ export default function FixedAccounts() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4">Filtros</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 flex flex-wrap gap-4 items-end mb-6">
+        <div className="flex flex-col min-w-[180px]">
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Descrição</label>
           <input
             name="descricao"
             value={filters.descricao}
             onChange={handleFilterChange}
             placeholder="Buscar por descrição"
-            className="input input-bordered w-full"
+            className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-logo focus:border-logo outline-none bg-white transition-all"
           />
-          <select name="tipo" value={filters.tipo} onChange={handleFilterChange} className="input input-bordered w-full">
+        </div>
+        <div className="flex flex-col min-w-[120px]">
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo</label>
+          <select name="tipo" value={filters.tipo} onChange={handleFilterChange} className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-logo focus:border-logo outline-none bg-white transition-all">
             <option value="">Todos os tipos</option>
             <option value="despesa">Despesa</option>
             <option value="receita">Receita</option>
           </select>
-          <select name="status" value={filters.status} onChange={handleFilterChange} className="input input-bordered w-full">
+        </div>
+        <div className="flex flex-col min-w-[120px]">
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+          <select name="status" value={filters.status} onChange={handleFilterChange} className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-logo focus:border-logo outline-none bg-white transition-all">
             <option value="">Todos os status</option>
             <option value="ativa">Ativa</option>
             <option value="inativa">Inativa</option>
           </select>
-          <select name="categoria_id" value={filters.categoria_id} onChange={handleFilterChange} className="input input-bordered w-full">
+        </div>
+        <div className="flex flex-col min-w-[160px]">
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Categoria</label>
+          <select name="categoria_id" value={filters.categoria_id} onChange={handleFilterChange} className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-logo focus:border-logo outline-none bg-white transition-all">
             <option value="">Todas as categorias</option>
             {categorias.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.nome}</option>
             ))}
           </select>
-          <select name="pessoa" value={filters.pessoa} onChange={handleFilterChange} className="input input-bordered w-full">
+        </div>
+        <div className="flex flex-col min-w-[160px]">
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Cliente</label>
+          <select name="pessoa" value={filters.pessoa} onChange={handleFilterChange} className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-logo focus:border-logo outline-none bg-white transition-all">
             <option value="">Todos os clientes</option>
             {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
-          <button onClick={clearFilters} className="btn btn-outline w-full">Limpar Filtros</button>
         </div>
-        {Object.values(filters).some(f => f !== '') && (
-          <div className="mt-4 text-sm text-gray-600">
-            {filteredContas.length} de {contas.length} contas encontradas
-          </div>
-        )}
+        <button onClick={clearFilters} className="ml-2 text-xs text-logo underline font-semibold hover:text-logo/80 transition-all mt-6">Limpar Filtros</button>
       </div>
 
       {loading && <div className="mb-4 text-gray-500">Carregando...</div>}

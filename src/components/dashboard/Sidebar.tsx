@@ -46,7 +46,13 @@ export function Sidebar() {
     { id: 'messages', label: 'Mensagens', icon: MessageSquare, to: '/dashboard/messages' },
     { id: 'settings', label: 'Configurações', icon: Settings, to: '/dashboard/settings' },
   ];
-  const menuItems = user?.role === 'admin' ? adminMenuItems : clientMenuItems;
+
+  const userMenuItems = [
+    { id: 'agenda', label: 'Agenda', icon: Calendar, to: '/dashboard/agenda' },
+    { id: 'projects', label: 'Projetos', icon: FolderOpen, to: '/dashboard/projects' },
+  ];
+
+  const menuItems = user?.role === 'admin' ? adminMenuItems : user?.role === 'user' ? userMenuItems : clientMenuItems;
 
   return (
     <div className="bg-white h-screen w-64 shadow-lg border-r border-gray-200 flex flex-col overflow-y-auto">

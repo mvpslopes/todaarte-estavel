@@ -148,17 +148,19 @@ export function FinancialCategories() {
           filteredCategorias.map(cat => (
             <div
               key={cat.id}
-              className={`rounded-2xl p-6 shadow-lg flex flex-col gap-3 relative ${cat.tipo === 'receita' ? 'bg-green-50 border-l-4 border-green-400' : 'bg-red-50 border-l-4 border-red-400'}`}
+              className={`relative rounded-2xl p-6 shadow-lg bg-white flex flex-col gap-3 border-l-4 transition-all duration-150 hover:scale-[1.025] hover:shadow-xl ${cat.tipo === 'receita' ? 'border-green-500' : 'border-red-500'}`}
             >
               <div className="flex items-center gap-3 mb-2">
-                {cat.tipo === 'receita' ? (
-                  <ArrowUpCircle className="h-7 w-7 text-green-500" />
-                ) : (
-                  <ArrowDownCircle className="h-7 w-7 text-red-500" />
-                )}
+                <span className={`flex items-center justify-center rounded-full w-10 h-10 ${cat.tipo === 'receita' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500'}`}>
+                  {cat.tipo === 'receita' ? (
+                    <ArrowUpCircle className="h-6 w-6" />
+                  ) : (
+                    <ArrowDownCircle className="h-6 w-6" />
+                  )}
+                </span>
                 <span className="text-lg font-bold text-gray-900">{cat.nome}</span>
               </div>
-              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${cat.tipo === 'receita' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{cat.tipo === 'receita' ? 'Receita' : 'Despesa'}</span>
+              <span className={`inline-block px-3 py-0.5 rounded-full text-xs font-semibold w-fit ${cat.tipo === 'receita' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{cat.tipo === 'receita' ? 'Receita' : 'Despesa'}</span>
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => handleEdit(cat)}

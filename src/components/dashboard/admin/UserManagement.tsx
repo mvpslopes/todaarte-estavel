@@ -6,7 +6,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: 'admin' | 'client';
+  role: 'admin' | 'client' | 'user';
   company?: string;
 }
 
@@ -15,7 +15,7 @@ export function UserManagement() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [role, setRole] = useState<'admin' | 'client'>('client');
+  const [role, setRole] = useState<'admin' | 'client' | 'user'>('client');
   const [company, setCompany] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export function UserManagement() {
   const [editNome, setEditNome] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editSenha, setEditSenha] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'client'>('client');
+  const [editRole, setEditRole] = useState<'admin' | 'client' | 'user'>('client');
   const [editCompany, setEditCompany] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -209,10 +209,11 @@ export function UserManagement() {
           <select
             className="input input-bordered w-full"
             value={role}
-            onChange={e => setRole(e.target.value as 'admin' | 'client')}
+            onChange={e => setRole(e.target.value as 'admin' | 'client' | 'user')}
           >
             <option value="client">Cliente</option>
             <option value="admin">Administrador</option>
+            <option value="user">Usuário</option>
           </select>
         </div>
         <input
@@ -246,7 +247,7 @@ export function UserManagement() {
               <tr key={u.id} className="border-b last:border-b-0 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700 font-medium">{u.name}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{u.email}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{u.role === 'admin' ? 'Administrador' : 'Cliente'}</td>
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{u.role === 'admin' ? 'Administrador' : u.role === 'client' ? 'Cliente' : 'Usuário'}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{u.company || '-'}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-right flex gap-2 justify-end items-center">
                   <button
@@ -299,11 +300,12 @@ export function UserManagement() {
               />
               <select
                 value={editRole}
-                onChange={e => setEditRole(e.target.value as 'admin' | 'client')}
+                onChange={e => setEditRole(e.target.value as 'admin' | 'client' | 'user')}
                 className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none"
               >
                 <option value="client">Cliente</option>
                 <option value="admin">Administrador</option>
+                <option value="user">Usuário</option>
               </select>
               <input
                 type="text"

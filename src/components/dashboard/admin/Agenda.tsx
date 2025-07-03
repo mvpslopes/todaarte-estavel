@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format as formatDate, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { addMonths, subMonths, startOfMonth } from 'date-fns';
 
 interface Atividade {
   id: number;
@@ -72,6 +73,15 @@ export default function Agenda() {
   const [statusMenuId, setStatusMenuId] = useState<number | null>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [currentDate, setCurrentDate] = useState(() => startOfMonth(new Date()));
+  // Filtro de status
+  const [statusFiltro, setStatusFiltro] = useState<string>('Todos');
+  // Ordenação
+  const [sortKey, setSortKey] = useState<string>('');
+  const [sortAsc, setSortAsc] = useState<boolean>(true);
+  // Paginação
+  const [pagina, setPagina] = useState(1);
+  const porPagina = 10;
 
   useEffect(() => {
     fetchAtividades();
@@ -202,6 +212,49 @@ export default function Agenda() {
     setLoading(false);
   }
 
+  // Filtrar atividades do mês selecionado e status
+  let atividadesFiltradas = atividades.filter(a => {
+    const datas = [a.data_pedido, a.data_realizacao, a.data_entrega]
+      .map(dt => dt ? new Date(dt) : null)
+      .filter(Boolean) as Date[];
+    const noMes = datas.some(dt =>
+      dt.getFullYear() === currentDate.getFullYear() &&
+      dt.getMonth() === currentDate.getMonth()
+    );
+    const statusOk = statusFiltro === 'Todos' || a.status === statusFiltro;
+    return noMes && statusOk;
+  });
+
+  // Ordenação
+  if (sortKey) {
+    atividadesFiltradas = [...atividadesFiltradas].sort((a, b) => {
+      let va = a[sortKey as keyof typeof a];
+      let vb = b[sortKey as keyof typeof b];
+      if (va && typeof va === 'string') va = va.toLowerCase();
+      if (vb && typeof vb === 'string') vb = vb.toLowerCase();
+      if (va === vb) return 0;
+      if (sortAsc) return va > vb ? 1 : -1;
+      return va < vb ? 1 : -1;
+    });
+  }
+
+  // Paginação
+  const totalPaginas = Math.ceil(atividadesFiltradas.length / porPagina);
+  const atividadesPaginadas = atividadesFiltradas.slice((pagina - 1) * porPagina, pagina * porPagina);
+
+  // Resumo de status para o mês selecionado
+  const resumoStatus = {
+    Pendente: 0,
+    'Em Andamento': 0,
+    'Em Aprovação': 0,
+    Aprovado: 0,
+  };
+  atividadesFiltradas.forEach(a => {
+    if (resumoStatus[a.status] !== undefined) {
+      resumoStatus[a.status]++;
+    }
+  });
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
@@ -293,23 +346,102 @@ export default function Agenda() {
       )}
       {view === 'tabela' && (
         <div className="overflow-x-auto bg-white rounded-2xl shadow border border-gray-100">
+          {/* Filtro de status */}
+          <div className="flex flex-wrap gap-4 items-center px-4 pt-6 pb-2">
+            <select
+              className="border rounded px-3 py-2 text-sm"
+              value={statusFiltro}
+              onChange={e => { setStatusFiltro(e.target.value); setPagina(1); }}
+            >
+              <option value="Todos">Todos os status</option>
+              <option value="Pendente">Pendentes</option>
+              <option value="Em Andamento">Em Andamento</option>
+              <option value="Em Aprovação">Em Aprovação</option>
+              <option value="Aprovado">Aprovadas</option>
+            </select>
+          </div>
+          {/* Cards de resumo de status com tooltip CSS puro */}
+          <div className="flex gap-4 px-4 pt-2 pb-2">
+            <div className="flex-1 min-w-[120px] bg-red-500 text-white rounded-xl p-3 flex flex-col items-center shadow-sm relative group">
+              <span className="text-2xl font-bold flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                {resumoStatus.Pendente}
+              </span>
+              <span className="text-xs font-semibold mt-1">Pendentes</span>
+              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1 rounded bg-black text-white text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-nowrap">Tarefas pendentes neste mês</span>
+            </div>
+            <div className="flex-1 min-w-[120px] bg-yellow-400 text-white rounded-xl p-3 flex flex-col items-center shadow-sm relative group">
+              <span className="text-2xl font-bold flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11 3"/><polyline points="21 8 21 13 16 13"/></svg>
+                {resumoStatus['Em Andamento']}
+              </span>
+              <span className="text-xs font-semibold mt-1">Em Andamento</span>
+              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1 rounded bg-black text-white text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-nowrap">Tarefas em andamento neste mês</span>
+            </div>
+            <div className="flex-1 min-w-[120px] bg-blue-500 text-white rounded-xl p-3 flex flex-col items-center shadow-sm relative group">
+              <span className="text-2xl font-bold flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16.862 4.487a2.1 2.1 0 112.97 2.97L7.5 19.788l-4 1 1-4 12.362-12.3z"/></svg>
+                {resumoStatus['Em Aprovação']}
+              </span>
+              <span className="text-xs font-semibold mt-1">Em Aprovação</span>
+              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1 rounded bg-black text-white text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-nowrap">Tarefas em aprovação neste mês</span>
+            </div>
+            <div className="flex-1 min-w-[120px] bg-green-600 text-white rounded-xl p-3 flex flex-col items-center shadow-sm relative group">
+              <span className="text-2xl font-bold flex items-center gap-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                {resumoStatus.Aprovado}
+              </span>
+              <span className="text-xs font-semibold mt-1">Aprovadas</span>
+              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1 rounded bg-black text-white text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 whitespace-nowrap">Tarefas aprovadas neste mês</span>
+            </div>
+          </div>
+          <div className="flex items-center justify-between mb-4 px-4 pt-4">
+            <button
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-lg font-bold"
+              onClick={() => { setCurrentDate(prev => subMonths(prev, 1)); setPagina(1); }}
+              title="Mês anterior"
+            >
+              {'<'}
+            </button>
+            <span className="font-semibold text-lg">
+              {currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+            <button
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-lg font-bold"
+              onClick={() => { setCurrentDate(prev => addMonths(prev, 1)); setPagina(1); }}
+              title="Próximo mês"
+            >
+              {'>'}
+            </button>
+          </div>
           <table className="min-w-fit text-base text-gray-800 w-full">
             <thead>
               <tr className="bg-white text-[#8a6a3b] border-b-2 border-[#b9936c] rounded-t-xl">
-                <th className="px-4 py-3 font-semibold text-left">Atividade</th>
-                <th className="px-4 py-3 font-semibold text-left">Responsável</th>
-                <th className="px-4 py-3 font-semibold text-left">Cliente</th>
-                <th className="px-4 py-3 font-semibold text-left">Data do Pedido</th>
-                <th className="px-4 py-3 font-semibold text-left">Data da Realização</th>
-                <th className="px-4 py-3 font-semibold text-left">Data da Entrega</th>
-                <th className="px-4 py-3 font-semibold text-left">Status</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('atividade'); setSortAsc(k => sortKey === 'atividade' ? !k : true); }}>Atividade {sortKey === 'atividade' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('responsavel'); setSortAsc(k => sortKey === 'responsavel' ? !k : true); }}>Responsável {sortKey === 'responsavel' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('cliente'); setSortAsc(k => sortKey === 'cliente' ? !k : true); }}>Cliente {sortKey === 'cliente' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('data_pedido'); setSortAsc(k => sortKey === 'data_pedido' ? !k : true); }}>Data do Pedido {sortKey === 'data_pedido' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('data_realizacao'); setSortAsc(k => sortKey === 'data_realizacao' ? !k : true); }}>Data da Realização {sortKey === 'data_realizacao' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('data_entrega'); setSortAsc(k => sortKey === 'data_entrega' ? !k : true); }}>Data da Entrega {sortKey === 'data_entrega' ? (sortAsc ? '▲' : '▼') : ''}</th>
+                <th className="px-4 py-3 font-semibold text-left cursor-pointer" onClick={() => { setSortKey('status'); setSortAsc(k => sortKey === 'status' ? !k : true); }}>Status {sortKey === 'status' ? (sortAsc ? '▲' : '▼') : ''}</th>
                 <th className="px-4 py-3 font-semibold text-left">Arquivo</th>
                 <th className="px-4 py-3 font-semibold text-left"> </th>
               </tr>
             </thead>
             <tbody>
-              {atividades.map(a => (
-                <tr key={a.id} className="hover:bg-gray-50 transition-all group">
+              {atividadesPaginadas.map(a => (
+                <tr
+                  key={a.id}
+                  className={(() => {
+                    let base = 'transition-all group ';
+                    if (a.status === 'Pendente') base += 'bg-red-100 ';
+                    if (a.status === 'Em Andamento') base += 'bg-yellow-100 ';
+                    if (a.status === 'Em Aprovação') base += 'bg-blue-100 ';
+                    if (a.status === 'Aprovado') base += 'bg-green-100 ';
+                    base += 'hover:bg-gray-100';
+                    return base;
+                  })()}
+                >
                   <td className="px-4 py-3 whitespace-normal break-words max-w-[220px]" title={a.atividade}>{a.atividade}</td>
                   <td className="px-4 py-3 whitespace-normal break-words max-w-[160px]" title={a.responsavel}>{a.responsavel}</td>
                   <td className="px-4 py-3 whitespace-normal break-words max-w-[160px]" title={a.cliente}>{a.cliente}</td>
@@ -347,28 +479,61 @@ export default function Agenda() {
                     ) : <span className="text-gray-300">-</span>}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <button className="text-gray-400 hover:text-logo p-1" title="Editar" onClick={() => handleEdit(a)}>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <button
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-300 bg-white shadow-sm transition-all duration-150 mr-2 hover:bg-green-100 group"
+                      title="Editar"
+                      onClick={() => handleEdit(a)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#0074D9" className="w-4 h-4 group-hover:scale-110 transition-transform">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L7.5 19.788l-4 1 1-4 12.362-12.3z" />
                       </svg>
                     </button>
-                    <button className="text-gray-400 hover:text-red-500 p-1 ml-1" title="Excluir" onClick={() => handleDelete(a.id)}>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <button
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-300 bg-white shadow-sm transition-all duration-150 hover:bg-red-100 group"
+                      title="Excluir"
+                      onClick={() => handleDelete(a.id)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#FF4136" className="w-4 h-4 group-hover:scale-110 transition-transform">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </td>
                 </tr>
               ))}
-              {atividades.length === 0 && (
+              {atividadesPaginadas.length === 0 && (
                 <tr><td colSpan={8} className="text-center py-6 text-gray-400">Nenhuma atividade cadastrada.</td></tr>
               )}
             </tbody>
           </table>
+          {/* Paginação */}
+          <div className="flex justify-center items-center gap-2 py-4">
+            <button className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300" disabled={pagina === 1} onClick={() => setPagina(p => Math.max(1, p - 1))}>{'<'}</button>
+            <span className="font-semibold">Página {pagina} de {totalPaginas}</span>
+            <button className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300" disabled={pagina === totalPaginas} onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}>{'>'}</button>
+          </div>
         </div>
       )}
       {view === 'calendario' && (
         <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-lg font-bold"
+              onClick={() => setCurrentDate(prev => subMonths(prev, 1))}
+              title="Mês anterior"
+            >
+              {'<'}
+            </button>
+            <span className="font-semibold text-lg">
+              {currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+            </span>
+            <button
+              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-lg font-bold"
+              onClick={() => setCurrentDate(prev => addMonths(prev, 1))}
+              title="Próximo mês"
+            >
+              {'>'}
+            </button>
+          </div>
           <BigCalendar
             localizer={localizer}
             culture="pt-BR"
@@ -376,6 +541,9 @@ export default function Agenda() {
             startAccessor="start"
             endAccessor="end"
             style={{ height: 600 }}
+            date={currentDate}
+            onNavigate={date => setCurrentDate(startOfMonth(date))}
+            views={['month']}
             messages={{
               next: 'Próximo',
               previous: 'Anterior',

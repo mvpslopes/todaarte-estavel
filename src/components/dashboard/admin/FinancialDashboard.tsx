@@ -301,49 +301,49 @@ export default function FinancialDashboard() {
       label: 'Saldo do Período',
       value: saldoPeriodo,
       color: saldoPeriodo >= 0 ? 'text-green-600' : 'text-red-600',
-      bg: saldoPeriodo >= 0 ? 'bg-green-50' : 'bg-red-50',
+      bg: 'bg-white',
     },
     {
       label: 'Receitas',
       value: totalReceitasPeriodo,
       color: 'text-green-700',
-      bg: 'bg-green-100',
+      bg: 'bg-white',
     },
     {
       label: 'Despesas',
       value: totalDespesasPeriodo,
       color: 'text-red-700',
-      bg: 'bg-red-100',
+      bg: 'bg-white',
     },
     {
       label: 'Receitas Pagas',
       value: totalReceitasPagasPeriodo,
       color: 'text-green-700',
-      bg: 'bg-green-50',
+      bg: 'bg-white',
     },
     {
       label: 'Despesas Pagas',
       value: totalDespesasPagasPeriodo,
       color: 'text-red-700',
-      bg: 'bg-red-50',
+      bg: 'bg-white',
     },
     {
       label: 'Receitas Pendentes',
       value: totalReceitasPendentesPeriodo,
       color: 'text-yellow-700',
-      bg: 'bg-yellow-50',
+      bg: 'bg-white',
     },
     {
       label: 'Despesas Pendentes',
       value: totalDespesasPendentesPeriodo,
       color: 'text-yellow-700',
-      bg: 'bg-yellow-50',
+      bg: 'bg-white',
     },
     {
       label: 'Saldo Realizado',
       value: saldoRealizadoPeriodo,
       color: saldoRealizadoPeriodo >= 0 ? 'text-green-600' : 'text-red-600',
-      bg: saldoRealizadoPeriodo >= 0 ? 'bg-green-50' : 'bg-red-50',
+      bg: 'bg-white',
     },
   ];
   // Card do resumo geral
@@ -351,7 +351,7 @@ export default function FinancialDashboard() {
     label: 'Saldo Geral (Histórico)',
     value: saldoGeral,
     color: saldoGeral >= 0 ? 'text-green-700' : 'text-red-700',
-    bg: saldoGeral >= 0 ? 'bg-green-100' : 'bg-red-100',
+    bg: 'bg-white',
   };
 
   return (

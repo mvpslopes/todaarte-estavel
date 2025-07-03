@@ -74,9 +74,17 @@ function gerarReciboPDF(recibo: any) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(12);
   doc.setTextColor(corTexto);
+  doc.text(`ID da Transação: ${recibo.id || '-'}`, 60, y);
+  y += 16;
   doc.text(`Categoria: ${recibo.categoria_nome || recibo.categoria || '-'}`, 60, y);
   y += 16;
+  doc.text(`Descrição: ${recibo.descricao || '-'}`, 60, y);
+  y += 16;
   doc.text(`Data do Pagamento: ${recibo.data_pagamento ? new Date(recibo.data_pagamento).toLocaleDateString('pt-BR') : '-'}`, 60, y);
+  y += 16;
+  doc.text(`Data de Emissão: ${new Date().toLocaleDateString('pt-BR')}`, 60, y);
+  y += 16;
+  doc.text(`Status: Pago`, 60, y);
   y += 16;
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(corValor);
@@ -113,8 +121,14 @@ export default function FinancialReceipts() {
       setLoading(true);
       const res = await fetch('/api/transacoes-financeiras');
       const data = await res.json();
-      // Filtrar apenas transações pagas
-      setReceipts(data.filter((t: any) => t.status === 'pago'));
+      console.log('Transações recebidas para recibos:', data);
+      // Filtro rigoroso: só pagos, com favorecido, valor > 0 e data_pagamento válida
+      setReceipts(data.filter((t: any) =>
+        t.status === 'pago' &&
+        t.pessoa_nome &&
+        t.valor > 0 &&
+        t.data_pagamento
+      ));
       setLoading(false);
     }
     fetchReceipts();

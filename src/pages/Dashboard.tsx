@@ -55,6 +55,12 @@ export function Dashboard() {
             <Route path="settings" element={<div className="p-8"><h1 className="text-2xl font-bold">Configurações</h1><p>Em desenvolvimento...</p></div>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </>}
+          {/* Rotas para usuário comum */}
+          {user?.role === 'user' && <>
+            <Route path="agenda" element={<Agenda />} />
+            <Route path="projects" element={<ProjectManagement />} />
+            <Route path="*" element={<Navigate to="/dashboard/agenda" replace />} />
+          </>}
         </Routes>
       </div>
     </div>

@@ -342,7 +342,7 @@ app.post('/api/usuarios', async (req, res) => {
   if (!nome || !email || !senha || !role) {
     return res.status(400).json({ error: 'Nome, e-mail, senha e tipo são obrigatórios.' });
   }
-  if (!['admin', 'client'].includes(role)) {
+  if (!['admin', 'client', 'user'].includes(role)) {
     return res.status(400).json({ error: 'Tipo de usuário inválido.' });
   }
   try {
@@ -410,7 +410,7 @@ app.put('/api/usuarios/:id', async (req, res) => {
   if (!nome || !email || !role) {
     return res.status(400).json({ error: 'Nome, e-mail e tipo são obrigatórios.' });
   }
-  if (!['admin', 'client'].includes(role)) {
+  if (!['admin', 'client', 'user'].includes(role)) {
     return res.status(400).json({ error: 'Tipo de usuário inválido.' });
   }
   try {
